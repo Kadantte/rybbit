@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BACKEND_URL } from "../../lib/const";
 import { authedFetch, authedFetchWithError } from "../utils";
 import { useStore, Filter } from "../../lib/store";
+import { timeZone } from "../../lib/dateTimeUtils";
 import { useDebounce } from "@uidotdev/usehooks";
 
 export type FunnelStep = {
@@ -62,11 +63,10 @@ export function useGetFunnel(config?: FunnelRequest, debounce?: boolean) {
         throw new Error("Funnel configuration is required");
       }
 
-      // Add timezone to the request
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Add time zone to the request
       const fullConfig = {
         ...configToUse,
-        timezone,
+        timeZone,
       };
       try {
         const response = await authedFetchWithError<{ data: FunnelResponse[] }>(
@@ -102,11 +102,10 @@ export function useSaveFunnel() {
     SaveFunnelRequest
   >({
     mutationFn: async (funnelConfig) => {
-      // Add timezone to the request
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Add time zone to the request
       const fullConfig = {
         ...funnelConfig,
-        timezone,
+        timeZone,
       };
 
       try {

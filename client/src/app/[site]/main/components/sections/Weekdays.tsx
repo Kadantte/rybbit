@@ -1,6 +1,9 @@
 import { DateTime } from "luxon";
 import { useMemo, useState } from "react";
-import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
+import {
+  useGetOverviewBucketed,
+  useGetOverviewBucketedPastMinutes,
+} from "../../../../../api/analytics/useGetOverviewBucketed";
 import {
   Tabs,
   TabsList,
@@ -25,19 +28,49 @@ import {
   TooltipTrigger,
 } from "../../../../../components/ui/tooltip";
 import { StatType, useStore } from "../../../../../lib/store";
+import { cn } from "../../../../../lib/utils";
+
+import {
+  shortDayNames,
+  longDayNames,
+  hourLabels,
+  formatLocalTime
+} from "../../../../../lib/dateTimeUtils";
 
 export function Weekdays() {
-  const { site } = useStore();
+  const { site, time } = useStore();
   const [metric, setMetric] = useState<StatType>("users");
+
+  // Use the past minutes API when in last-24-hours mode
+  const isPast24HoursMode = time.mode === "last-24-hours";
 
   const { data, isFetching, error } = useGetOverviewBucketed({
     site,
     bucket: "hour",
+    props: {
+      enabled: !isPast24HoursMode,
+    },
   });
+
+  // Past minutes-based queries (for 24 hour mode)
+  const {
+    data: past24HoursData,
+    isFetching: isPast24HoursFetching,
+    error: past24HoursError,
+  } = useGetOverviewBucketedPastMinutes({
+    pastMinutes: 24 * 60,
+    site,
+    bucket: "hour",
+    props: {
+      enabled: isPast24HoursMode,
+    },
+  });
+
+  const dataToUse = isPast24HoursMode ? past24HoursData : data;
 
   // Generate aggregated data for the heatmap
   const heatmapData = useMemo(() => {
-    if (!data?.data) return [];
+    if (!dataToUse?.data) return [];
 
     // Initialize a 2D array for days (0-6) and hours (0-23)
     const aggregated: number[][] = Array(7)
@@ -50,7 +83,7 @@ export function Weekdays() {
       .map(() => Array(24).fill(0));
 
     // Process each data point
-    data.data.forEach((item) => {
+    dataToUse.data.forEach((item) => {
       if (!item || !item.time) return;
 
       // Parse the timestamp
@@ -78,7 +111,7 @@ export function Weekdays() {
     }
 
     return aggregated;
-  }, [data, metric]);
+  }, [dataToUse, metric]);
 
   // Find max value for color intensity scaling
   const maxValue = useMemo(() => {
@@ -94,29 +127,6 @@ export function Weekdays() {
     }
     return max;
   }, [heatmapData]);
-
-  // Days of the week for column headers and full day names
-  const days = ["Mon", "Tues", "Weds", "Thus", "Fri", "Sat", "Sun"];
-  const fullDayNames = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
-
-  // Generate time labels for the row headers
-  const timeLabels = useMemo(() => {
-    return Array(24)
-      .fill(0)
-      .map((_, hour) => {
-        const isPM = hour >= 12;
-        const h = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-        return `${h} ${isPM ? "PM" : "AM"}`;
-      });
-  }, []);
 
   // Get color intensity based on value
   const getColorIntensity = (value: number) => {
@@ -222,7 +232,7 @@ export function Weekdays() {
                     key={hour}
                     className="h-4 text-xs flex items-center justify-end pr-2 text-neutral-400"
                   >
-                    {hour % 2 === 0 ? timeLabels[hour] : ""}
+                    {hour % 2 === 1 ? hourLabels[hour] : ""}
                   </div>
                 ))}
             </div>
@@ -230,7 +240,7 @@ export function Weekdays() {
             <div className="flex-1">
               {/* Day labels */}
               <div className="flex h-5">
-                {days.map((day, i) => (
+                {shortDayNames.map((day, i) => (
                   <div
                     key={i}
                     className="flex-1 text-center text-xs text-neutral-400"
@@ -263,12 +273,15 @@ export function Weekdays() {
                           <Tooltip key={day}>
                             <TooltipTrigger asChild>
                               <div
-                                className={`flex-1 mx-0.5 ${colorClass} hover:ring-1 hover:ring-emerald-300 transition-all rounded-sm my-0.5`}
+                                className={cn(
+                                  "flex-1 mx-0.5 hover:ring-1 hover:ring-emerald-300 transition-all rounded-sm my-0.5",
+                                  colorClass
+                                )}
                               />
                             </TooltipTrigger>
                             <TooltipContent className="flex flex-col gap-1 p-2">
                               <div className="font-medium text-sm">
-                                {fullDayNames[day]} at {timeLabels[hour]}
+                                {longDayNames[day]} {formatLocalTime(hour, 0)} - {formatLocalTime(hour, 59)}
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="font-semibold">

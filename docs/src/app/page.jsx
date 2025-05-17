@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/accordion";
 import { Tilt_Warp } from "next/font/google";
 import Link from "next/link";
+import { cn } from "../lib/utils";
 import { AdvancedFilters } from "./components/Cards/AdvancedFilters";
 import { EventTracking } from "./components/Cards/EventTracking";
 import { Funnels } from "./components/Cards/Funnels";
@@ -35,7 +36,10 @@ export default function IndexPage() {
   return (
     <div className="flex flex-col items-center justify-center overflow-x-hidden">
       <h1
-        className={`text-4xl md:text-5xl lg:text-7xl font-semibold pt-16 md:pt-24 px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400 ${tilt_wrap.className}`}
+        className={cn(
+          "text-4xl md:text-5xl lg:text-7xl font-semibold pt-16 md:pt-24 px-4 tracking-tight max-w-4xl text-center text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-400",
+          tilt_wrap.className
+        )}
       >
         The Open Source Google Analytics Replacement
       </h1>
@@ -46,12 +50,12 @@ export default function IndexPage() {
 
       <div className="flex flex-col sm:flex-row my-8 md:my-10 items-center justify-center gap-4 md:gap-6 text-base md:text-lg px-4">
         <Link href="https://app.rybbit.io/signup" className="w-full sm:w-auto">
-          <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50">
+          <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-5 py-3 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
             Track your Site
           </button>
         </Link>
         <Link href="https://demo.rybbit.io/1" className="w-full sm:w-auto">
-          <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50">
+          <button className="w-full sm:w-auto bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-5 py-3 rounded-lg border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer">
             View Live Demo
           </button>
         </Link>
@@ -137,17 +141,55 @@ export default function IndexPage() {
               See what others think about Rybbit Analytics
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 justify-center">
-            <TweetCard id="1920470706761929048" />
-            <TweetCard id="1920379817113088341" />
-            <TweetCard id="1920318739335033226" />
-            <TweetCard id="1920258312177594500" />
-            <TweetCard id="1919793785384386576" />
-            <TweetCard id="1920316582875496449" />
-            <TweetCard id="1920425974954381456" />
-            <TweetCard id="1919290867451404670" />
-            <TweetCard id="1920192156960239683" />
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
+            <TweetCard
+              id="1920470706761929048"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1920899082253434950"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1920318739335033226"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1920258312177594500"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1921928423284629758"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1920316582875496449"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1920425974954381456"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1919290867451404670"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1921878010417848443"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1920192156960239683"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1920379817113088341"
+              className="break-inside-avoid mb-4"
+            />
+            <TweetCard
+              id="1919793785384386576"
+              className="break-inside-avoid mb-4"
+            />
           </div>
         </div>
       </section>
@@ -348,7 +390,7 @@ export default function IndexPage() {
                   href="https://app.rybbit.io/signup"
                   className="w-full sm:w-auto"
                 >
-                  <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 md:px-8 py-3 md:py-4 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50">
+                  <button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 md:px-8 py-3 md:py-4 rounded-lg shadow-lg shadow-emerald-900/20 transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 cursor-pointer">
                     Track your site now
                   </button>
                 </Link>

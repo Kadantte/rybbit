@@ -8,13 +8,11 @@ import { useEffect, useState } from "react";
 import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { userStore } from "../lib/userStore";
+import { cn } from "../lib/utils";
 import "./globals.css";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
-
-// const manrope = Manrope({
-//   subsets: ["latin"],
-// });
 
 const publicRoutes = ["/login", "/signup"];
 
@@ -85,12 +83,22 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <TooltipProvider>
         <body
-          className={`${inter.className} bg-background text-foreground h-full`}
+          className={cn(
+            "bg-background text-foreground h-full",
+            inter.className
+          )}
         >
           <QueryProvider>{children}</QueryProvider>
           <Toaster />
         </body>
       </TooltipProvider>
+      {globalThis?.location?.hostname === "app.rybbit.io" && (
+        <Script
+          src="https://demo.rybbit.io/api/script.js"
+          data-site-id="22"
+          strategy="afterInteractive"
+        />
+      )}
     </html>
   );
 }

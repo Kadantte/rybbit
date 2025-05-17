@@ -37,46 +37,100 @@ function getTimeStatementFill(
   {
     date,
     pastMinutes,
+    pastMinutesRange,
   }: {
-    date?: { startDate: string; endDate: string; timezone: string };
+    date?: { startDate: string; endDate: string; timeZone: string };
     pastMinutes?: number;
+    pastMinutesRange?: { start: number; end: number };
   },
   bucket: TimeBucket
 ) {
   const { params, bucket: validatedBucket } = validateTimeStatementFillParams(
-    { date, pastMinutes },
+    { date, pastMinutes, pastMinutesRange },
     bucket
   );
 
   if (params.date) {
-    const { startDate, endDate, timezone } = params.date;
+    const { startDate, endDate, timeZone } = params.date;
     return `WITH FILL FROM toTimeZone(
       toDateTime(${
         TimeBucketToFn[validatedBucket]
       }(toDateTime(${SqlString.escape(startDate)}, ${SqlString.escape(
-      timezone
+      timeZone
     )}))),
       'UTC'
       )
       TO if(
         toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-      timezone
+      timeZone
     )}),
         now(),
         toTimeZone(
           toDateTime(${
             TimeBucketToFn[validatedBucket]
           }(toDateTime(${SqlString.escape(endDate)}, ${SqlString.escape(
-      timezone
+      timeZone
     )}))) + INTERVAL 1 DAY,
           'UTC'
         )
       ) STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
+  // For specific past minutes range
+  if (params.pastMinutesRange) {
+    const { start, end } = params.pastMinutesRange;
+    return ` WITH FILL 
+      FROM ${
+        TimeBucketToFn[validatedBucket]
+      }(toDateTime(now() - INTERVAL ${SqlString.escape(start)} MINUTE))
+      TO ${
+        TimeBucketToFn[validatedBucket]
+      }(toDateTime(now() - INTERVAL ${SqlString.escape(
+      end
+    )} MINUTE)) + INTERVAL 1 ${
+      validatedBucket === "minute"
+        ? "MINUTE"
+        : validatedBucket === "five_minutes"
+        ? "MINUTE"
+        : validatedBucket === "ten_minutes"
+        ? "MINUTE"
+        : validatedBucket === "fifteen_minutes"
+        ? "MINUTE"
+        : validatedBucket === "month"
+        ? "MONTH"
+        : validatedBucket === "week"
+        ? "WEEK"
+        : validatedBucket === "day"
+        ? "DAY"
+        : "HOUR"
+    }
+      STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
+  }
+  // For regular past minutes
   if (params.pastMinutes) {
-    return `WITH FILL FROM now() - INTERVAL ${SqlString.escape(
+    return ` WITH FILL 
+      FROM ${
+        TimeBucketToFn[validatedBucket]
+      }(toDateTime(now() - INTERVAL ${SqlString.escape(
       params.pastMinutes
-    )} MINUTE TO now() STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
+    )} MINUTE))
+      TO ${TimeBucketToFn[validatedBucket]}(toDateTime(now())) + INTERVAL 1 ${
+      validatedBucket === "minute"
+        ? "MINUTE"
+        : validatedBucket === "five_minutes"
+        ? "MINUTE"
+        : validatedBucket === "ten_minutes"
+        ? "MINUTE"
+        : validatedBucket === "fifteen_minutes"
+        ? "MINUTE"
+        : validatedBucket === "month"
+        ? "MONTH"
+        : validatedBucket === "week"
+        ? "WEEK"
+        : validatedBucket === "day"
+        ? "DAY"
+        : "HOUR"
+    }
+      STEP INTERVAL ${bucketIntervalMap[validatedBucket]}`;
   }
   return "";
 }
@@ -84,23 +138,31 @@ function getTimeStatementFill(
 const getQuery = ({
   startDate,
   endDate,
-  timezone,
+  timeZone,
   bucket,
   site,
   filters,
   pastMinutes,
+  pastMinutesRange,
 }: {
   startDate: string;
   endDate: string;
-  timezone: string;
+  timeZone: string;
   bucket: TimeBucket;
   site: string;
   filters: string;
   pastMinutes?: number;
+  pastMinutesRange?: { start: number; end: number };
 }) => {
   const filterStatement = getFilterStatement(filters);
 
-  const isAllTime = !startDate && !endDate;
+  const isAllTime = !startDate && !endDate && !pastMinutes && !pastMinutesRange;
+
+  const timeParams = pastMinutesRange
+    ? { pastMinutesRange }
+    : pastMinutes
+    ? { pastMinutes }
+    : { date: { startDate, endDate, timeZone } };
 
   const query = `
 SELECT
@@ -116,7 +178,7 @@ FROM
     SELECT
          toDateTime(${
            TimeBucketToFn[bucket]
-         }(toTimeZone(start_time, ${SqlString.escape(timezone)}))) AS time,
+         }(toTimeZone(start_time, ${SqlString.escape(timeZone)}))) AS time,
         COUNT() AS sessions,
         AVG(pages_in_session) AS pages_per_session,
         sumIf(1, pages_in_session = 1) / COUNT() AS bounce_rate,
@@ -133,25 +195,12 @@ FROM
         WHERE 
             site_id = {siteId:Int32}
             ${filterStatement}
-            ${getTimeStatement(
-              pastMinutes
-                ? { pastMinutes }
-                : {
-                    date: { startDate, endDate, timezone },
-                  }
-            )}
+            ${getTimeStatement(timeParams)}
             AND type = 'pageview'
         GROUP BY session_id
     )
     GROUP BY time ORDER BY time ${
-      isAllTime
-        ? ""
-        : getTimeStatementFill(
-            pastMinutes
-              ? { pastMinutes }
-              : { date: { startDate, endDate, timezone } },
-            bucket
-          )
+      isAllTime ? "" : getTimeStatementFill(timeParams, bucket)
     }
 ) AS session_stats
 FULL JOIN
@@ -159,30 +208,17 @@ FULL JOIN
     SELECT
          toDateTime(${
            TimeBucketToFn[bucket]
-         }(toTimeZone(timestamp, ${SqlString.escape(timezone)}))) AS time,
+         }(toTimeZone(timestamp, ${SqlString.escape(timeZone)}))) AS time,
         COUNT(*) AS pageviews,
         COUNT(DISTINCT user_id) AS users
     FROM events
     WHERE
         site_id = {siteId:Int32}
         ${filterStatement}
-        ${getTimeStatement(
-          pastMinutes
-            ? { pastMinutes }
-            : {
-                date: { startDate, endDate, timezone },
-              }
-        )}
+        ${getTimeStatement(timeParams)}
         AND type = 'pageview'
     GROUP BY time ORDER BY time ${
-      isAllTime
-        ? ""
-        : getTimeStatementFill(
-            pastMinutes
-              ? { pastMinutes }
-              : { date: { startDate, endDate, timezone } },
-            bucket
-          )
+      isAllTime ? "" : getTimeStatementFill(timeParams, bucket)
     }
 ) AS page_stats
 USING time
@@ -191,7 +227,16 @@ ORDER BY time`;
   return query;
 };
 
-type TimeBucket = "hour" | "day" | "week" | "month";
+type TimeBucket =
+  | "minute"
+  | "five_minutes"
+  | "ten_minutes"
+  | "fifteen_minutes"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "year";
 
 type getOverviewBucketed = { time: string; pageviews: number }[];
 
@@ -203,16 +248,26 @@ export async function getOverviewBucketed(
     Querystring: {
       startDate: string;
       endDate: string;
-      timezone: string;
+      timeZone: string;
       bucket: TimeBucket;
       filters: string;
       pastMinutes?: number;
+      pastMinutesStart?: number;
+      pastMinutesEnd?: number;
     };
   }>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, bucket, filters, pastMinutes } =
-    req.query;
+  const {
+    startDate,
+    endDate,
+    timeZone,
+    bucket,
+    filters,
+    pastMinutes,
+    pastMinutesStart,
+    pastMinutesEnd,
+  } = req.query;
   const site = req.params.site;
 
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
@@ -220,14 +275,21 @@ export async function getOverviewBucketed(
     return res.status(403).send({ error: "Forbidden" });
   }
 
+  // Handle specific past minutes range if provided
+  const pastMinutesRange =
+    pastMinutesStart && pastMinutesEnd
+      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+      : undefined;
+
   const query = getQuery({
     startDate,
     endDate,
-    timezone,
+    timeZone,
     bucket,
     site,
     filters,
     pastMinutes: pastMinutes ? Number(pastMinutes) : undefined,
+    pastMinutesRange,
   });
 
   try {

@@ -16,18 +16,33 @@ export function mapHeaders(headers: any) {
   return map;
 }
 
-export async function getSession(req: FastifyRequest) {
+export async function getSessionFromReq(req: FastifyRequest) {
   const headers = new Headers(req.headers as any);
   const session = await auth!.api.getSession({ headers });
   return session;
+}
+
+export async function getUserGodMode(req: FastifyRequest) {
+  const session = await getSessionFromReq(req);
+  const userId = session?.user.id;
+
+  if (!userId) {
+    return false;
+  }
+
+  const userRecord = await db
+    .select({ godMode: user.godMode })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+  return userRecord.length > 0 && userRecord[0].godMode;
 }
 
 export async function getSitesUserHasAccessTo(
   req: FastifyRequest,
   adminOnly = false
 ) {
-  const headers = new Headers(req.headers as any);
-  const session = await auth!.api.getSession({ headers });
+  const session = await getSessionFromReq(req);
 
   const userId = session?.user.id;
 

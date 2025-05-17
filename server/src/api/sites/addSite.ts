@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
 import { loadAllowedDomains } from "../../lib/allowedDomains.js";
-import { auth } from "../../lib/auth.js";
+import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 
 export async function addSite(
@@ -36,9 +36,7 @@ export async function addSite(
   }
 
   try {
-    // Get the current user's session
-    const headers = new Headers(request.headers as any);
-    const session = await auth!.api.getSession({ headers });
+    const session = await getSessionFromReq(request);
 
     if (!session?.user?.id) {
       return reply.status(401).send({

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { BACKEND_URL } from "../../lib/const";
+import { timeZone } from "../../lib/dateTimeUtils";
 import { authedFetch } from "../utils";
 import { useStore, Filter } from "../../lib/store";
 import { Goal } from "./useGetGoals";
@@ -22,15 +23,14 @@ export function useGetGoal({
   enabled?: boolean;
 }) {
   const { site } = useStore();
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return useQuery({
-    queryKey: ["goal", site, goalId, startDate, endDate, timezone, filters],
+    queryKey: ["goal", site, goalId, startDate, endDate, timeZone, filters],
     queryFn: async () => {
       return authedFetch(`${BACKEND_URL}/goal/${goalId}/${site}`, {
         startDate,
         endDate,
-        timezone,
+        timeZone,
         filters,
       }).then((res) => res.json());
     },

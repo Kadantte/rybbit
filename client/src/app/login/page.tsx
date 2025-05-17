@@ -15,8 +15,10 @@ import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
 import { IS_CLOUD } from "../../lib/const";
 import { userStore } from "../../lib/userStore";
+import { useConfigs } from "../../lib/configs";
 
 export default function Page() {
+  const { configs, isLoading: isLoadingConfigs } = useConfigs();
   useSetPageTitle("Rybbit · Login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -151,12 +153,14 @@ export default function Page() {
                 </Alert>
               )}
 
-              <div className="text-center text-sm">
-                Don't have an account?{" "}
-                <Link href="/signup" className="underline">
-                  Sign up
-                </Link>
-              </div>
+              {(!configs?.disableSignup || !isLoadingConfigs) && (
+                <div className="text-center text-sm">
+                  Don't have an account?{" "}
+                  <Link href="/signup" className="underline">
+                    Sign up
+                  </Link>
+                </div>
+              )}
             </div>
           </form>
         </CardContent>

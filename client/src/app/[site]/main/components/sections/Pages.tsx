@@ -16,6 +16,8 @@ import { Expand } from "lucide-react";
 
 type Tab = "pages" | "entry_pages" | "exit_pages";
 
+const MAX_LABEL_LENGTH = 70;
+
 export function Pages() {
   const { data: siteMetadata } = useGetSite();
   const [tab, setTab] = useState<Tab>("pages");
@@ -48,7 +50,9 @@ export function Pages() {
               title="Pages"
               getValue={(e) => e.value}
               getKey={(e) => e.value}
-              getLabel={(e) => truncateString(e.value, 30) || "Other"}
+              getLabel={(e) =>
+                truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
+              }
               getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}
@@ -60,7 +64,9 @@ export function Pages() {
               title="Entry Pages"
               getValue={(e) => e.value}
               getKey={(e) => e.value}
-              getLabel={(e) => truncateString(e.value, 30) || "Other"}
+              getLabel={(e) =>
+                truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
+              }
               getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}
@@ -72,7 +78,9 @@ export function Pages() {
               title="Exit Pages"
               getValue={(e) => e.value}
               getKey={(e) => e.value}
-              getLabel={(e) => truncateString(e.value, 30) || "Other"}
+              getLabel={(e) =>
+                truncateString(e.value, MAX_LABEL_LENGTH) || "Other"
+              }
               getLink={(e) => `https://${siteMetadata?.domain}${e.value}`}
               expanded={expanded}
               close={close}

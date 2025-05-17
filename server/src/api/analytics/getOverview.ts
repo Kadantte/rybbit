@@ -20,14 +20,14 @@ type GetOverviewResponse = {
 const getQuery = ({
   startDate,
   endDate,
-  timezone,
+  timeZone,
   site,
   filters,
   pastMinutes,
 }: {
   startDate: string;
   endDate: string;
-  timezone: string;
+  timeZone: string;
   site: string;
   filters: string;
   pastMinutes: number;
@@ -65,7 +65,7 @@ const getQuery = ({
                       pastMinutes
                         ? { pastMinutes }
                         : {
-                            date: { startDate, endDate, timezone },
+                            date: { startDate, endDate, timeZone },
                           }
                     )}
                 GROUP BY session_id
@@ -85,7 +85,7 @@ const getQuery = ({
                   pastMinutes
                     ? { pastMinutes }
                     : {
-                        date: { startDate, endDate, timezone },
+                        date: { startDate, endDate, timeZone },
                       }
                 )}
                 AND type = 'pageview'
@@ -99,7 +99,7 @@ export interface GenericRequest {
   Querystring: {
     startDate: string;
     endDate: string;
-    timezone: string;
+    timeZone: string;
     filters: string;
     parameter: FilterParameter;
     pastMinutes?: number;
@@ -111,7 +111,7 @@ export async function getOverview(
   req: FastifyRequest<GenericRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, filters, pastMinutes } = req.query;
+  const { startDate, endDate, timeZone, filters, pastMinutes } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -121,7 +121,7 @@ export async function getOverview(
   const query = getQuery({
     startDate,
     endDate,
-    timezone,
+    timeZone,
     site,
     filters,
     pastMinutes: Number(pastMinutes),
