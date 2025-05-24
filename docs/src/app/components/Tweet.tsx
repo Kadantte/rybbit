@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { cn } from "@/lib/utils";
 import { Suspense } from "react";
 import {
   enrichTweet,
@@ -7,8 +8,6 @@ import {
   type TwitterComponents,
 } from "react-tweet";
 import { getTweet, type Tweet } from "react-tweet/api";
-
-import { cn } from "@/lib/utils";
 
 interface TwitterIconProps {
   className?: string;
@@ -23,7 +22,7 @@ const Twitter = ({ className, ...props }: TwitterIconProps) => (
     height="1em"
     width="1em"
     xmlns="http://www.w3.org/2000/svg"
-    className={className}
+    className={cn(className)}
     {...props}
   >
     <g>
@@ -37,7 +36,7 @@ const Verified = ({ className, ...props }: TwitterIconProps) => (
   <svg
     aria-label="Verified Account"
     viewBox="0 0 24 24"
-    className={className}
+    className={cn(className)}
     {...props}
   >
     <g fill="currentColor">
@@ -247,7 +246,11 @@ export const MagicTweet = ({
     >
       <TweetHeader tweet={enrichedTweet} />
       <TweetBody tweet={enrichedTweet} />
-      {/* <TweetMedia tweet={enrichedTweet} /> */}
+      {tweet.id_str !== "1920425974954381456" && (
+        <div className="hidden sm:block">
+          <TweetMedia tweet={enrichedTweet} />
+        </div>
+      )}
     </div>
   );
 };

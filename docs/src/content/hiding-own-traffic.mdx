@@ -1,0 +1,35 @@
+import { Steps } from 'nextra/components'
+
+# Hiding Your Own Traffic
+
+You can disable Rybbit tracking in your browser using the localStorage API.
+
+<Steps>
+
+### 1. Open your browser's developer console
+
+Press **F12** or right-click the page and select "Inspect"
+
+Navigate to the "Console" tab
+
+### 2. Disable tracking
+
+Enter this command to disable tracking:
+
+```js
+localStorage.setItem('disable-rybbit', 'true');
+```
+
+### 3. Re-enable tracking (when needed)
+
+If you want to re-enable tracking later, enter:
+
+```js
+localStorage.removeItem('disable-rybbit');
+```
+
+</Steps>
+
+This method is useful for developers testing the site or site owners who don't want to track their own visits.
+
+Once disabled, the Rybbit script will not send any tracking data while preserving the API functions to prevent JavaScript errors.

@@ -148,7 +148,7 @@ export function AddSite({
               <Input
                 id="domain"
                 value={domain}
-                onChange={(e) => setDomain(e.target.value)}
+                onChange={(e) => setDomain(e.target.value.toLowerCase())}
                 placeholder="example.com or sub.example.com"
               />
             </div>

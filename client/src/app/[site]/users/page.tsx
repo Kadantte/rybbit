@@ -14,10 +14,6 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Monitor,
   Smartphone,
   Tablet,
@@ -28,6 +24,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useGetUsers, UsersResponse } from "../../../api/analytics/users";
 import { Button } from "../../../components/ui/button";
+import { TablePagination } from "../../../components/pagination";
 import {
   Tooltip,
   TooltipContent,
@@ -368,85 +365,16 @@ export default function UsersPage() {
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800">
-          <div className="text-sm text-neutral-400">
-            {isLoading ? (
-              <span>Loading users...</span>
-            ) : (
-              <>
-                Showing{" "}
-                <span className="font-semibold">
-                  {data?.data?.length
-                    ? table.getState().pagination.pageIndex *
-                        pagination.pageSize +
-                      1
-                    : 0}
-                </span>{" "}
-                to{" "}
-                <span className="font-semibold">
-                  {data?.data?.length
-                    ? Math.min(
-                        (table.getState().pagination.pageIndex + 1) *
-                          pagination.pageSize,
-                        data?.totalCount || 0
-                      )
-                    : 0}
-                </span>{" "}
-                of{" "}
-                <span className="font-semibold">{data?.totalCount || 0}</span>{" "}
-                users
-              </>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage() || isLoading}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage() || isLoading}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm text-neutral-400">
-              {isLoading ? (
-                <span>Loading...</span>
-              ) : (
-                <>
-                  Page{" "}
-                  <span className="font-semibold">
-                    {table.getState().pagination.pageIndex + 1}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-semibold">
-                    {Math.max(table.getPageCount(), 1)}
-                  </span>
-                </>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage() || isLoading}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage() || isLoading}
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
+        <div className="border-t border-neutral-800">
+          <div className="px-4 py-3">
+            <TablePagination
+              table={table}
+              data={{ items: data?.data || [], total: data?.totalCount || 0 }}
+              pagination={pagination}
+              setPagination={setPagination}
+              isLoading={isLoading}
+              itemName="users"
+            />
           </div>
         </div>
       </div>

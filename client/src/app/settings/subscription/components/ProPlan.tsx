@@ -167,6 +167,25 @@ export function ProPlan() {
                   </div>
                   <Progress value={usagePercentage} />
                 </div>
+
+                {currentUsage >= eventLimit && (
+                  <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        <strong>Usage limit reached!</strong> You've exceeded
+                        your plan's event limit.
+                      </p>
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={handleChangePlan}
+                        disabled={isProcessing}
+                      >
+                        Upgrade Plan
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

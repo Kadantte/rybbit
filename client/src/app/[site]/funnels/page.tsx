@@ -82,7 +82,7 @@ export default function FunnelsPage() {
   }
 
   return (
-    <div className="p-2 md:p-4  max-w-[1300px] mx-auto space-y-3">
+    <div className="p-2 md:p-4 max-w-[1300px] mx-auto space-y-3">
       <div className="flex justify-between items-center mb-3">
         <div>
           <MobileSidebar />

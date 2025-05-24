@@ -1,3 +1,4 @@
+import { Steps } from "nextra/components"
 
 # Next.js
 
@@ -5,15 +6,24 @@ Next.js is a popular React framework that enables features like server-side rend
 
 ## How to Add Rybbit to Next.js
 
-### 1. Install the Script
+<Steps>
+### 1. Retrieve Your Tracking Script
+
+Navigate to your Rybbit dashboard to obtain your site ID. You'll need this for the `data-site-id` attribute.
+
+### 2. Install the Script Using Next.js Script Component
 
 Next.js provides a built-in [Script component](https://nextjs.org/docs/app/building-your-application/optimizing/scripts) that handles script loading efficiently. This is the recommended approach.
 
-Create or modify your layout file (either `app/layout.js` or `pages/_app.js` depending on your Next.js version):
+### 3. Add to Your Layout File
+
+Create or modify your layout file depending on your Next.js version:
+
+**For App Router (Next.js 13+):**
 
 ```jsx
-// For App Router (Next.js 13+)
-import Script from 'next/script'
+// app/layout.js
+import Script from "next/script"
 
 export default function RootLayout({ children }) {
   return (
@@ -32,9 +42,11 @@ export default function RootLayout({ children }) {
 }
 ```
 
+**For Pages Router:**
+
 ```jsx
-// For Pages Router
-import Script from 'next/script'
+// pages/_app.js
+import Script from "next/script"
 
 function MyApp({ Component, pageProps }) {
   return (
@@ -51,4 +63,4 @@ function MyApp({ Component, pageProps }) {
 
 export default MyApp
 ```
-
+</Steps>

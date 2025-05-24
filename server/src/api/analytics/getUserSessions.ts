@@ -44,7 +44,7 @@ export interface GetUserSessionsRequest {
   Querystring: {
     startDate: string;
     endDate: string;
-    timezone: string;
+    timeZone: string;
     site: string;
     filters: string;
   };
@@ -57,7 +57,7 @@ export async function getUserSessions(
   req: FastifyRequest<GetUserSessionsRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, site, filters } = req.query;
+  const { startDate, endDate, timeZone, site, filters } = req.query;
   const userId = req.params.userId;
 
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
@@ -67,7 +67,7 @@ export async function getUserSessions(
 
   const filterStatement = getFilterStatement(filters);
   const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
+    date: { startDate, endDate, timeZone },
   });
 
   const query = `

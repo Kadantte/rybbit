@@ -34,6 +34,7 @@ import { addSite } from "./api/sites/addSite.js";
 import { changeSiteDomain } from "./api/sites/changeSiteDomain.js";
 import { changeSitePublic } from "./api/sites/changeSitePublic.js";
 import { changeSiteSalt } from "./api/sites/changeSiteSalt.js";
+import { changeSiteBlockBots } from "./api/sites/changeSiteBlockBots.js";
 import { deleteSite } from "./api/sites/deleteSite.js";
 import { getSite } from "./api/sites/getSite.js";
 import { getSiteHasData } from "./api/sites/getSiteHasData.js";
@@ -45,19 +46,21 @@ import { listOrganizationMembers } from "./api/user/listOrganizationMembers.js";
 import { initializeCronJobs } from "./cron/index.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { allowList, loadAllowedDomains } from "./lib/allowedDomains.js";
-import { mapHeaders } from "./lib/auth-utils.js";
+import { getSessionFromReq, mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
 import { siteConfig } from "./lib/siteConfig.js";
 import { trackEvent } from "./tracker/trackEvent.js";
 import { extractSiteId, isSitePublic, normalizeOrigin } from "./utils.js";
-
-// Import Stripe handlers
 import { createCheckoutSession } from "./api/stripe/createCheckoutSession.js";
 import { createPortalSession } from "./api/stripe/createPortalSession.js";
 import { getSubscription } from "./api/stripe/getSubscription.js";
 import { handleWebhook } from "./api/stripe/webhook.js";
 import { IS_CLOUD } from "./lib/const.js";
 import { addUserToOrganization } from "./api/user/addUserToOrganization.js";
+import { getConfig } from "./api/getConfig.js";
+import { getPageTitles } from "./api/analytics/getPageTitles.js";
+import { getAdminSites } from "./api/admin/getAdminSites.js";
+import { getAdminUsers } from "./api/admin/getAdminUsers.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -120,6 +123,7 @@ const PUBLIC_ROUTES: string[] = [
   "/track",
   "/script",
   "/auth",
+  "/config",
   "/api/auth",
   "/api/auth/callback/google",
   "/api/auth/callback/github",
@@ -132,6 +136,7 @@ const ANALYTICS_ROUTES = [
   "/overview/",
   "/overview-bucketed/",
   "/single-col/",
+  "/page-titles/",
   "/retention/",
   "/site-has-data/",
   "/site-is-public/",
@@ -150,7 +155,6 @@ const ANALYTICS_ROUTES = [
   "/api/analytics/events/names/",
   "/api/analytics/events/properties/",
   "/events/",
-
   "/get-site",
 ];
 
@@ -180,11 +184,7 @@ server.addHook("onRequest", async (request, reply) => {
   }
 
   try {
-    // Convert Fastify headers object into Fetch-compatible Headers
-    const headers = new Headers(request.headers as HeadersInit);
-
-    // Get session from BetterAuth
-    const session = await auth!.api.getSession({ headers });
+    const session = await getSessionFromReq(request);
 
     if (!session) {
       return reply.status(401).send({ error: "Unauthorized" });
@@ -203,6 +203,7 @@ server.get("/live-user-count/:site", getLiveUsercount);
 server.get("/overview/:site", getOverview);
 server.get("/overview-bucketed/:site", getOverviewBucketed);
 server.get("/single-col/:site", getSingleCol);
+server.get("/page-titles/:site", getPageTitles);
 server.get("/retention/:site", getRetention);
 server.get("/site-has-data/:site", getSiteHasData);
 server.get("/site-is-public/:site", getSiteIsPublic);
@@ -229,10 +230,12 @@ server.get("/events/names/:site", getEventNames);
 server.get("/events/properties/:site", getEventProperties);
 
 // Administrative
+server.get("/config", getConfig);
 server.post("/add-site", addSite);
 server.post("/change-site-domain", changeSiteDomain);
 server.post("/change-site-public", changeSitePublic);
 server.post("/change-site-salt", changeSiteSalt);
+server.post("/change-site-block-bots", changeSiteBlockBots);
 server.post("/delete-site/:id", deleteSite);
 server.get("/get-sites", getSites);
 server.get("/get-site/:id", getSite);
@@ -254,9 +257,14 @@ if (IS_CLOUD) {
     { config: { rawBody: true } },
     handleWebhook
   ); // Use rawBody parser config for webhook
+
+  // Admin Routes
+  server.get("/admin/sites", getAdminSites);
+  server.get("/admin/users", getAdminUsers);
 }
 
 server.post("/track", trackEvent);
+server.get("/health", (_, reply) => reply.send("OK"));
 
 const start = async () => {
   try {

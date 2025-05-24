@@ -33,9 +33,11 @@ export async function middleware(request: NextRequest) {
     const excludedRoutes = [
       "login",
       "signup",
-      "settings",
       "subscribe",
+      "invitation",
+      "reset-password",
       "auth",
+      "admin",
       "_next",
       "api",
     ];

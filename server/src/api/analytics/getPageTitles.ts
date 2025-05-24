@@ -1,0 +1,190 @@
+import { FastifyReply, FastifyRequest } from "fastify";
+import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
+import {
+  getFilterStatement,
+  getTimeStatement,
+  processResults,
+} from "./utils.js";
+
+interface GetPageTitlesRequest {
+  Params: {
+    site: string;
+  };
+  Querystring: {
+    startDate: string;
+    endDate: string;
+    pastMinutesStart?: number;
+    pastMinutesEnd?: number;
+    timeZone: string;
+    filters: string;
+    limit?: number;
+    page?: number;
+  };
+}
+
+// This type represents a single item in the array
+export type PageTitleItem = {
+  value: string;
+  pathname: string;
+  count: number;
+  percentage: number;
+};
+
+// Structure for paginated response (if/when fully paginated)
+type PageTitlesPaginatedResponse = {
+  data: PageTitleItem[];
+  totalCount: number;
+};
+
+const getPageTitlesQuery = (
+  request: FastifyRequest<GetPageTitlesRequest>,
+  isCountQuery: boolean = false
+) => {
+  const {
+    startDate,
+    endDate,
+    timeZone,
+    filters,
+    limit,
+    page,
+    pastMinutesStart,
+    pastMinutesEnd,
+  } = request.query;
+
+  const filterStatement = getFilterStatement(filters);
+
+  // Handle specific past minutes range if provided
+  const pastMinutesRange =
+    pastMinutesStart && pastMinutesEnd
+      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+      : undefined;
+
+  const timeStatement = getTimeStatement(
+    pastMinutesRange
+      ? { pastMinutesRange }
+      : {
+          date: { startDate, endDate, timeZone },
+        }
+  );
+
+  let validatedLimit: number | null = null;
+  if (!isCountQuery && limit !== undefined) {
+    const parsedLimit = parseInt(String(limit), 10);
+    if (!isNaN(parsedLimit) && parsedLimit > 0) {
+      validatedLimit = parsedLimit;
+    }
+  }
+  // StandardSection usually shows a small number, e.g., 7 or 10. Let's default to 10 for non-paginated use.
+  const limitStatement =
+    !isCountQuery && validatedLimit
+      ? `LIMIT ${validatedLimit}`
+      : isCountQuery
+        ? ""
+        : "LIMIT 10";
+
+  let validatedOffset: number | null = null;
+  if (!isCountQuery && page !== undefined) {
+    const parsedPage = parseInt(String(page), 10);
+    if (!isNaN(parsedPage) && parsedPage >= 1) {
+      const pageOffset = (parsedPage - 1) * (validatedLimit || 10);
+      validatedOffset = pageOffset;
+    }
+  }
+  const offsetStatement =
+    !isCountQuery && validatedOffset ? `OFFSET ${validatedOffset}` : "";
+
+  // For page_title, we want to count distinct sessions that viewed this title.
+  // We also need a representative pathname.
+  // Using argMax to get the pathname from the most recent event for that title in a session.
+  const coreLogic = `
+    SELECT
+        page_title as value,
+        argMax(pathname, timestamp) as pathname, // Get pathname of latest event for this title in session
+        COUNT(DISTINCT session_id) as unique_sessions
+    FROM events
+    WHERE
+        site_id = {siteId:Int32}
+        AND page_title IS NOT NULL
+        AND page_title <> ''
+        AND type = 'pageview' // Ensure these are pageview events
+        ${filterStatement}
+        ${timeStatement}
+    GROUP BY page_title
+  `;
+
+  if (isCountQuery) {
+    return `SELECT COUNT(*) as totalCount FROM (${coreLogic})`;
+  }
+
+  return `
+    WITH PageTitleStats AS (${coreLogic})
+    SELECT
+        value,
+        pathname,
+        unique_sessions as count,
+        ROUND(
+            unique_sessions * 100.0 / SUM(unique_sessions) OVER (), 
+            2
+        ) as percentage
+    FROM PageTitleStats
+    ORDER BY count DESC
+    ${limitStatement}
+    ${offsetStatement}
+  `;
+};
+
+export async function getPageTitles(
+  req: FastifyRequest<GetPageTitlesRequest>,
+  res: FastifyReply
+) {
+  const site = req.params.site;
+  const { page } = req.query;
+
+  const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
+  if (!userHasAccessToSite) {
+    return res.status(403).send({ error: "Forbidden" });
+  }
+
+  const isPaginatedRequest = page !== undefined; // True if page is present
+
+  const dataQuery = getPageTitlesQuery(req, false);
+
+  try {
+    const dataResult = await clickhouse.query({
+      query: dataQuery,
+      format: "JSONEachRow",
+      query_params: {
+        siteId: Number(site),
+      },
+    });
+    const items = await processResults<PageTitleItem>(dataResult);
+
+    if (isPaginatedRequest) {
+      const countQuery = getPageTitlesQuery(req, true);
+      const countResult = await clickhouse.query({
+        query: countQuery,
+        format: "JSONEachRow",
+        query_params: {
+          siteId: Number(site),
+        },
+      });
+      const countData = await processResults<{ totalCount: number }>(
+        countResult
+      );
+      const totalCount = countData.length > 0 ? countData[0].totalCount : 0;
+      return res.send({ data: { data: items, totalCount } });
+    } else {
+      // For non-paginated (StandardSection default) use, return the simpler structure
+      return res.send({ data: items });
+    }
+  } catch (error) {
+    console.error(`Error fetching page titles:`, error);
+    console.error("Failed dataQuery:", dataQuery);
+    if (isPaginatedRequest) {
+      const countQuery = getPageTitlesQuery(req, true);
+      console.error("Failed countQuery:", countQuery);
+    }
+    return res.status(500).send({ error: `Failed to fetch page titles` });
+  }
+}

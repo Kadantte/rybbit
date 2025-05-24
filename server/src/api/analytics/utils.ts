@@ -9,53 +9,70 @@ import SqlString from "sqlstring";
 
 export function getTimeStatement({
   date,
-  pastMinutes,
+  pastMinutesRange,
 }: {
   date?: {
     startDate?: string;
     endDate?: string;
-    timezone?: string;
+    timeZone?: string;
     table?: "events" | "sessions";
   };
-  pastMinutes?: number;
+  pastMinutesRange?: { start: number; end: number };
 }) {
   // Sanitize inputs with Zod
-  const sanitized = validateTimeStatementParams({ date, pastMinutes });
+  const sanitized = validateTimeStatementParams({
+    date,
+    pastMinutesRange,
+  });
 
   if (sanitized.date) {
-    const { startDate, endDate, timezone, table } = sanitized.date;
+    const { startDate, endDate, timeZone } = sanitized.date;
     if (!startDate && !endDate) {
       return "";
     }
 
-    const col = (table ?? "events") === "events" ? "timestamp" : "session_end";
-
-    // Use SqlString.escape for date and timezone values
-    return `AND ${col} >= toTimeZone(
+    // Use SqlString.escape for date and timeZone values
+    return `AND timestamp >= toTimeZone(
       toStartOfDay(toDateTime(${SqlString.escape(
         startDate
-      )}, ${SqlString.escape(timezone)})),
+      )}, ${SqlString.escape(timeZone)})),
       'UTC'
       )
-      AND ${col} < if(
+      AND timestamp < if(
         toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-      timezone
-    )}),
+          timeZone
+        )}),
         now(),
         toTimeZone(
           toStartOfDay(toDateTime(${SqlString.escape(
             endDate
-          )}, ${SqlString.escape(timezone)})) + INTERVAL 1 DAY,
+          )}, ${SqlString.escape(timeZone)})) + INTERVAL 1 DAY,
           'UTC'
         )
       )`;
   }
-  if (sanitized.pastMinutes) {
-    // Use SqlString.escape for pastMinutes (it handles numbers)
-    return `AND timestamp > now() - interval ${SqlString.escape(
-      sanitized.pastMinutes
-    )} minute`;
+
+  // Handle specific range of past minutes - convert to exact timestamps for better performance
+  if (sanitized.pastMinutesRange) {
+    const { start, end } = sanitized.pastMinutesRange;
+
+    // Calculate exact timestamps in JavaScript to avoid runtime ClickHouse calculations
+    const now = new Date();
+    const startTimestamp = new Date(now.getTime() - start * 60 * 1000);
+    const endTimestamp = new Date(now.getTime() - end * 60 * 1000);
+
+    // Format as YYYY-MM-DD HH:MM:SS without milliseconds for ClickHouse
+    const startIso = startTimestamp
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
+    const endIso = endTimestamp.toISOString().slice(0, 19).replace("T", " ");
+
+    return `AND timestamp > toDateTime(${SqlString.escape(startIso)}) AND timestamp <= toDateTime(${SqlString.escape(endIso)})`;
   }
+
+  // If no valid time parameters were provided, return empty string
+  return "";
 }
 
 export async function processResults<T>(

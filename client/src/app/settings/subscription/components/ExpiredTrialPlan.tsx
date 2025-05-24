@@ -23,7 +23,7 @@ export function ExpiredTrialPlan({ message }: ExpiredTrialPlanProps) {
   const router = useRouter();
 
   const defaultMessage =
-    "Your 14-day free trial has ended. You need to subscribe to continue using the analytics service.";
+    "Your 14-day free trial has ended. You need to subscribe to continue tracking visits again.";
 
   return (
     <div className="space-y-6">
@@ -31,8 +31,8 @@ export function ExpiredTrialPlan({ message }: ExpiredTrialPlanProps) {
         <CardHeader>
           <CardTitle>Trial Expired</CardTitle>
           <CardDescription>
-            Your free trial has expired. Subscribe to a plan to continue using
-            the service.
+            Your free trial has expired. Subscribe to a plan to continue
+            tracking visits again.
           </CardDescription>
         </CardHeader>
         <CardContent>

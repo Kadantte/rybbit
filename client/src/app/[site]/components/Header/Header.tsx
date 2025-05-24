@@ -11,11 +11,11 @@ export function Header() {
   return (
     <div className="flex flex-col">
       {user && (
-        <>
+        <div className="flex flex-col px-4">
           <FreeTrialBanner />
           <UsageBanners />
           <NoData />
-        </>
+        </div>
       )}
     </div>
   );

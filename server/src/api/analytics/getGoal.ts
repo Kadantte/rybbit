@@ -21,14 +21,14 @@ export async function getGoal(
     Querystring: {
       startDate: string;
       endDate: string;
-      timezone: string;
+      timeZone: string;
       filters?: string;
     };
   }>,
   reply: FastifyReply
 ) {
   const { goalId, site } = request.params;
-  const { startDate, endDate, timezone, filters } = request.query;
+  const { startDate, endDate, timeZone, filters } = request.query;
 
   // Check user access to site
   const userHasAccessToSite = await getUserHasAccessToSitePublic(request, site);
@@ -56,7 +56,7 @@ export async function getGoal(
     // Build filter and time clauses for ClickHouse queries
     const filterStatement = filters ? getFilterStatement(filters) : "";
     const timeStatement = getTimeStatement({
-      date: { startDate, endDate, timezone },
+      date: { startDate, endDate, timeZone },
     });
 
     // First, get the total number of unique sessions (denominator for conversion rate)

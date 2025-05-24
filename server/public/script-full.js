@@ -3,6 +3,20 @@
   const scriptTag = document.currentScript;
   const ANALYTICS_HOST = scriptTag.getAttribute("src").split("/script.js")[0];
 
+  // Check if the user has opted out of tracking via localStorage
+  if (localStorage.getItem("disable-rybbit") !== null) {
+    // Create a no-op implementation to ensure the API still works
+    window.rybbit = {
+      pageview: () => {},
+      event: () => {},
+      trackOutbound: () => {},
+      identify: () => {},
+      clearUserId: () => {},
+      getUserId: () => null,
+    };
+    return;
+  }
+
   if (!ANALYTICS_HOST) {
     console.error("Please provide a valid analytics host");
     return;
@@ -22,6 +36,8 @@
     ? Math.max(0, parseInt(scriptTag.getAttribute("data-debounce")))
     : 500;
 
+  const autoTrackPageview =
+    scriptTag.getAttribute("data-auto-track-pageview") !== "false";
   const autoTrackSpa = scriptTag.getAttribute("data-track-spa") !== "false";
   const trackQuerystring =
     scriptTag.getAttribute("data-track-query") !== "false";
@@ -48,6 +64,19 @@
     }
   } catch (e) {
     console.error("Error parsing data-mask-patterns:", e);
+  }
+
+  // Add user ID management
+  let customUserId = null;
+
+  // Load stored user ID from localStorage on script initialization
+  try {
+    const storedUserId = localStorage.getItem("rybbit-user-id");
+    if (storedUserId) {
+      customUserId = storedUserId;
+    }
+  } catch (e) {
+    // localStorage not available, ignore
   }
 
   // Helper function to convert wildcard pattern to regex
@@ -122,6 +151,12 @@
     const url = new URL(window.location.href);
     let pathname = url.pathname;
 
+    // Always handle hash-based SPA routing
+    if (url.hash && url.hash.startsWith("#/")) {
+      // For #/path format, replace pathname with just /path
+      pathname = url.hash.substring(1);
+    }
+
     if (findMatchingPattern(pathname, skipPatterns)) {
       return;
     }
@@ -147,6 +182,8 @@
         eventType === "custom_event" || eventType === "outbound"
           ? JSON.stringify(properties)
           : undefined,
+      // Add custom user ID if available
+      user_id: customUserId,
     };
 
     fetch(`${ANALYTICS_HOST}/track`, {
@@ -198,6 +235,8 @@
     };
 
     window.addEventListener("popstate", debouncedTrackPageview);
+    // Always listen for hashchange events for hash-based routing
+    window.addEventListener("hashchange", debouncedTrackPageview);
   }
 
   window.rybbit = {
@@ -205,7 +244,35 @@
     event: (name, properties = {}) => track("custom_event", name, properties),
     trackOutbound: (url, text = "", target = "_self") =>
       track("outbound", "", { url, text, target }),
+
+    // New methods for user identification
+    identify: (userId) => {
+      if (typeof userId !== "string" || userId.trim() === "") {
+        console.error("User ID must be a non-empty string");
+        return;
+      }
+      customUserId = userId.trim();
+      try {
+        localStorage.setItem("rybbit-user-id", customUserId);
+      } catch (e) {
+        // localStorage not available, user ID will only persist for session
+        console.warn("Could not persist user ID to localStorage");
+      }
+    },
+
+    clearUserId: () => {
+      customUserId = null;
+      try {
+        localStorage.removeItem("rybbit-user-id");
+      } catch (e) {
+        // localStorage not available, ignore
+      }
+    },
+
+    getUserId: () => customUserId,
   };
 
-  trackPageview();
+  if (autoTrackPageview) {
+    trackPageview();
+  }
 })();

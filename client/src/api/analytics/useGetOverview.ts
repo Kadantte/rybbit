@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useStore } from "../../lib/store";
 import { authedFetch, getStartAndEndDate } from "../utils";
 import { BACKEND_URL } from "../../lib/const";
+import { timeZone } from "../../lib/dateTimeUtils";
 
 export type GetOverviewResponse = {
   sessions: number;
@@ -28,11 +29,10 @@ export function useGetOverview({
   return useQuery({
     queryKey: ["overview", timeToUse, site, filters],
     queryFn: () => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       return authedFetch(`${BACKEND_URL}/overview/${site}`, {
         startDate,
         endDate,
-        timezone,
+        timeZone,
         filters,
       }).then((res) => res.json());
     },
@@ -51,19 +51,21 @@ export function useGetOverview({
 }
 
 export function useGetOverviewPastMinutes({
-  pastMinutes,
+  pastMinutesStart,
+  pastMinutesEnd,
   site,
 }: {
-  pastMinutes: number;
+  pastMinutesStart: number;
+  pastMinutesEnd: number;
   site?: number | string;
 }) {
   return useQuery({
-    queryKey: ["overview-past-minutes", pastMinutes, site],
+    queryKey: ["overview-past-minutes", pastMinutesStart, pastMinutesEnd, site],
     queryFn: () => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       return authedFetch(`${BACKEND_URL}/overview/${site}`, {
-        pastMinutes,
-        timezone,
+        timeZone,
+        pastMinutesStart,
+        pastMinutesEnd,
       }).then((res) => res.json());
     },
     staleTime: Infinity,
