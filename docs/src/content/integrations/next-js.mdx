@@ -1,3 +1,4 @@
+import { Steps } from "nextra/components"
 
 # Next.js
 
@@ -5,15 +6,24 @@ Next.js is a popular React framework that enables features like server-side rend
 
 ## How to Add Rybbit to Next.js
 
-### 1. Install the Script
+<Steps>
+### 1. Retrieve Your Tracking Script
+
+Navigate to your Rybbit dashboard to obtain your site ID. You'll need this for the `data-site-id` attribute.
+
+### 2. Install the Script Using Next.js Script Component
 
 Next.js provides a built-in [Script component](https://nextjs.org/docs/app/building-your-application/optimizing/scripts) that handles script loading efficiently. This is the recommended approach.
 
-Create or modify your layout file (either `app/layout.js` or `pages/_app.js` depending on your Next.js version):
+### 3. Add to Your Layout File
+
+Create or modify your layout file depending on your Next.js version:
+
+**For App Router (Next.js 13+):**
 
 ```jsx
-// For App Router (Next.js 13+)
-import Script from 'next/script'
+// app/layout.js
+import Script from "next/script"
 
 export default function RootLayout({ children }) {
   return (
@@ -32,9 +42,11 @@ export default function RootLayout({ children }) {
 }
 ```
 
+**For Pages Router:**
+
 ```jsx
-// For Pages Router
-import Script from 'next/script'
+// pages/_app.js
+import Script from "next/script"
 
 function MyApp({ Component, pageProps }) {
   return (
@@ -51,4 +63,54 @@ function MyApp({ Component, pageProps }) {
 
 export default MyApp
 ```
+</Steps>
 
+### (optional) 4. Rewrite the script serving to bypass ad blockers
+
+While Rybbit is not using any cookied based tracking and is fully compliant
+with GDPR, CCPA, and other privacy regulations, some ad blockers may still agressively
+block it no matter how the tracking is implemented or operated.
+
+With Next.js's [rewrites](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites) feature, you can rewrite the script serving to reduce the chance of being blocked by ad blockers.
+
+```dotenv
+# .env
+
+# use this value if you are self-hosting Rybbit
+NEXT_PUBLIC_RYBBIT_HOST=https://your-hosted-rybbit-instance.com
+
+# use this value if you are using the Rybbit hosted tracking
+NEXT_PUBLIC_RYBBIT_HOST=https://app.rybbit.io
+```
+
+```js
+// next.config.js
+module.exports = {
+  // ... other configurations
+  async rewrites() {
+    return [
+      {
+        source: "/api/script.js",
+        destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/script.js`,
+      },
+      {
+        source: "/api/track",
+        destination: `${process.env.NEXT_PUBLIC_RYBBIT_HOST}/api/track`,
+      },
+    ]
+  },
+}
+```
+
+and where you are using the script:
+
+```jsx
+// app/layout.js or pages/_app.js
+<Script
+  src="/api/script.js"
+  data-site-id="YOUR_SITE_ID"
+  strategy="afterInteractive"
+/>
+```
+
+Note that this rewrite will consume the bandwidth of your server, as all tracking requests will be proxied through your Next.js application. Consider this when evaluating your hosting costs and server capacity requirements.

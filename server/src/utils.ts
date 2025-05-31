@@ -79,7 +79,7 @@ export const extractSiteId = (path: string) => {
 export const normalizeOrigin = (url: string) => {
   try {
     const hostname = new URL(url).hostname;
-    return hostname.replace(/^www\./, "");
+    return hostname.replace(/^www\./, "").toLowerCase();
   } catch {
     return url;
   }

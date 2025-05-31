@@ -47,6 +47,7 @@ export function MapComponent({
     isFetching: isSubdivisionFetching,
   } = useSingleCol({
     parameter: "region",
+    limit: 10000,
   });
 
   const [dataVersion, setDataVersion] = useState<number>(0);

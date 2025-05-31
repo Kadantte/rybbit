@@ -1,37 +1,42 @@
 import { Check } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useGetSite, useGetSites } from "../../../../api/admin/sites";
+import { useGetSite, useGetSitesFromOrg } from "../../../../api/admin/sites";
+import { Favicon } from "../../../../components/Favicon";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../../../components/ui/dropdown-menu";
+import { authClient } from "../../../../lib/auth";
+import { resetStore } from "../../../../lib/store";
 import { userStore } from "../../../../lib/userStore";
-import { resetStore, useStore } from "../../../../lib/store";
-import { Favicon } from "../../../../components/Favicon";
+import { cn } from "../../../../lib/utils";
 
 function SiteSelectorContent() {
-  const { data: sites } = useGetSites();
-  const stuff = useStore();
+  const { data: activeOrganization } = authClient.useActiveOrganization();
+  const { data: sites } = useGetSitesFromOrg(activeOrganization?.id);
+
   const pathname = usePathname();
   const router = useRouter();
   const currentSiteId = Number(pathname.split("/")[1]);
 
   return (
     <DropdownMenuContent align="start">
-      {sites?.map((site) => {
+      {sites?.sites?.map((site) => {
         const isSelected = site.siteId === currentSiteId;
         return (
           <DropdownMenuItem
             key={site.siteId}
             onClick={() => {
+              if (isSelected) return;
               resetStore();
               router.push(`/${site.siteId}`);
             }}
-            className={`flex items-center justify-between ${
-              isSelected ? "bg-neutral-800" : ""
-            }`}
+            className={cn(
+              "flex items-center justify-between",
+              isSelected && "bg-neutral-800"
+            )}
           >
             <div className="flex items-center gap-2">
               <Favicon domain={site.domain} className="w-4 h-4" />

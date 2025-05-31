@@ -63,7 +63,9 @@ export const deserializeUrlToState = (
   // Deserialize time
   const timeMode = searchParams.get("timeMode") as Time["mode"] | null;
   if (timeMode) {
-    if (timeMode === "day") {
+    if (timeMode === "last-24-hours") {
+      result.time = { mode: "last-24-hours" };
+    } else if (timeMode === "day") {
       const day = searchParams.get("day");
       if (day) {
         result.time = { mode: "day", day };
@@ -172,7 +174,7 @@ export const useSyncStateWithUrl = () => {
     if (!pathname) return false;
     const pathParts = pathname.split("/");
     if (pathParts.length < 3) return false;
-    return ["main", "sessions", "users"].includes(pathParts[2]);
+    return ["main", "sessions", "users", "performance"].includes(pathParts[2]);
   };
 
   // Initialize from URL params after site is set

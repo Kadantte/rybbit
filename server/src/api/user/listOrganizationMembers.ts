@@ -3,6 +3,7 @@ import { db } from "../../db/postgres/postgres.js";
 import { member, user } from "../../db/postgres/schema.js";
 import { eq, and } from "drizzle-orm";
 import { auth } from "../../lib/auth.js";
+import { getSessionFromReq } from "../../lib/auth-utils.js";
 
 interface ListOrganizationMembersRequest {
   Params: {
@@ -25,9 +26,7 @@ export async function listOrganizationMembers(
   try {
     const { organizationId } = request.params;
 
-    // Get current user's session
-    const headers = new Headers(request.headers as any);
-    const session = await auth!.api.getSession({ headers });
+    const session = await getSessionFromReq(request);
 
     if (!session?.user?.id) {
       return reply.status(401).send({

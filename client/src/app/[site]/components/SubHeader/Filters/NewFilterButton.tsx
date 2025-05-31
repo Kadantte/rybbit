@@ -7,11 +7,15 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../../../../../components/ui/dropdown-menu";
-import { Filter, useStore } from "../../../../../lib/store";
+import { Filter, FilterParameter, useStore } from "../../../../../lib/store";
 import { sleep } from "../../../../../lib/utils";
 import { FilterComponent } from "../../shared/Filters/FilterComponent";
 
-export function NewFilterButton() {
+export function NewFilterButton({
+  availableFilters,
+}: {
+  availableFilters?: FilterParameter[];
+}) {
   const { filters, setFilters } = useStore();
 
   const [localFilters, setLocalFilters] = useState<Filter[]>(filters);
@@ -32,7 +36,7 @@ export function NewFilterButton() {
     setLocalFilters([
       ...localFilters,
       {
-        parameter: "pathname",
+        parameter: availableFilters?.[0] || "pathname",
         type: "equals",
         value: [],
       },
@@ -81,6 +85,7 @@ export function NewFilterButton() {
               filter={filter}
               index={index}
               updateFilter={updateLocalFilters}
+              availableFilters={availableFilters}
             />
           ))}
         </div>

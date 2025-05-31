@@ -1,28 +1,16 @@
 import {
-  affiliateMediums,
-  audioMediums,
-  displayMediums,
-  emailMediums,
   emailAppIds,
-  emailSources,
+  getMediumType,
+  getSourceType,
   isMobileAppId,
-  pushMediums,
-  referralMediums,
+  isPaidTraffic,
+  // New imports for expanded categories
+  newsAppIds,
+  productivityAppIds,
   searchAppIds,
-  searchDomains,
-  searchSources,
   shoppingAppIds,
-  shoppingDomains,
-  shoppingSources,
-  smsSources,
   socialAppIds,
-  socialDomains,
-  socialMediums,
-  socialSources,
   videoAppIds,
-  videoDomains,
-  videoMediums,
-  videoSources,
 } from "./const.js";
 import { getUTMParams } from "./trackingUtils.js";
 
@@ -53,6 +41,14 @@ function getMobileAppCategory(
     return { type: "Organic Shopping", isPaid: false };
   }
 
+  if (newsAppIds.some((id) => appIdLower.includes(id))) {
+    return { type: "News", isPaid: false };
+  }
+
+  if (productivityAppIds.some((id) => appIdLower.includes(id))) {
+    return { type: "Productivity", isPaid: false };
+  }
+
   return null;
 }
 
@@ -80,6 +76,74 @@ function isSelfReferral(referringDomain: string, hostname: string): boolean {
 
   // Check if domains match or if referrer is a subdomain of current domain
   return refDomain === currentDomain || refDomain.endsWith("." + currentDomain);
+}
+
+/**
+ * Get detailed channel analysis including source type, medium type, and paid status
+ *
+ * @example
+ * ```typescript
+ * const details = getChannelDetails(
+ *   "https://google.com/search?q=example",
+ *   "utm_source=google&utm_medium=cpc&utm_campaign=brand"
+ * );
+ * // Returns:
+ * // {
+ * //   channel: "Paid Search",
+ * //   sourceType: "search",
+ * //   mediumType: "cpc",
+ * //   isPaid: true,
+ * //   isMobile: false,
+ * //   details: { source: "google", medium: "cpc", campaign: "brand", referringDomain: "google.com" }
+ * // }
+ * ```
+ */
+export function getChannelDetails(
+  referrer: string,
+  querystring: string,
+  hostname?: string
+): {
+  channel: string;
+  sourceType: string;
+  mediumType: string;
+  isPaid: boolean;
+  isMobile: boolean;
+  details: {
+    source: string;
+    medium: string;
+    campaign: string;
+    referringDomain: string;
+  };
+} {
+  const utmParams = getUTMParams(querystring);
+  const referringDomain = getDomainFromReferrer(referrer);
+
+  const utmSource = utmParams["utm_source"] || "";
+  const utmMedium = utmParams["utm_medium"] || "";
+  const utmCampaign = utmParams["utm_campaign"] || "";
+
+  const channel = getChannel(referrer, querystring, hostname);
+  const sourceType = getSourceType(utmSource || referringDomain);
+  const mediumType = getMediumType(utmMedium);
+  const isPaid =
+    isPaidTraffic(utmMedium, utmSource) ||
+    utmParams["gclid"] !== undefined ||
+    utmParams["gad_source"] !== undefined;
+  const isMobile = utmSource ? isMobileAppId(utmSource) : false;
+
+  return {
+    channel,
+    sourceType,
+    mediumType,
+    isPaid,
+    isMobile,
+    details: {
+      source: utmSource || referringDomain,
+      medium: utmMedium,
+      campaign: utmCampaign,
+      referringDomain,
+    },
+  };
 }
 
 export function getChannel(
@@ -124,67 +188,18 @@ export function getChannel(
     return selfReferral ? "Internal" : "Direct";
   }
 
-  // Check if traffic is paid
+  // Use utility functions for better categorization
+  const sourceType = getSourceType(utmSource || referringDomain);
+  const mediumType = getMediumType(utmMedium);
   const isPaid =
-    ["cpc", "cpm", "cpv", "cpa", "ppc", "retargeting"].includes(utmMedium) ||
-    utmMedium.startsWith("paid") ||
-    gclid !== "" ||
-    gadSource !== "";
-
-  // Check domain type - improved to handle subdomains better
-  const isDomainSearch = searchDomains.some(
-    (domain) =>
-      referringDomain === domain ||
-      referringDomain.endsWith("." + domain) ||
-      (domain.endsWith(".") && referringDomain.startsWith(domain))
-  );
-  const isDomainSocial = socialDomains.some(
-    (domain) =>
-      referringDomain === domain ||
-      referringDomain.endsWith("." + domain) ||
-      (domain.endsWith(".") && referringDomain.startsWith(domain))
-  );
-  const isDomainVideo = videoDomains.some(
-    (domain) =>
-      referringDomain === domain ||
-      referringDomain.endsWith("." + domain) ||
-      (domain.endsWith(".") && referringDomain.startsWith(domain))
-  );
-  const isDomainShopping = shoppingDomains.some(
-    (domain) =>
-      referringDomain === domain ||
-      referringDomain.endsWith("." + domain) ||
-      (domain.endsWith(".") && referringDomain.startsWith(domain))
-  );
-
-  // Check source type
-  const isSourceSearch = searchSources.includes(utmSource);
-  const isSourceSocial = socialSources.includes(utmSource);
-  const isSourceVideo = videoSources.includes(utmSource);
-  const isSourceShopping = shoppingSources.includes(utmSource);
-  const isSourceEmail = emailSources.includes(utmSource);
-  const isSourceSMS = smsSources.includes(utmSource);
+    isPaidTraffic(utmMedium, utmSource) || gclid !== "" || gadSource !== "";
 
   // Apply channel detection logic (in order of precedence)
 
   // Cross Network
   if (utmCampaign === "cross-network") return "Cross-Network";
 
-  // Paid channels
-  if (isPaid) {
-    if (isSourceSearch || isDomainSearch) return "Paid Search";
-    if (isSourceSocial || isDomainSocial) return "Paid Social";
-    if (isSourceVideo || isDomainVideo) return "Paid Video";
-    if (isSourceShopping || isDomainShopping) return "Paid Shopping";
-    if (socialMediums.includes(utmMedium)) return "Paid Social";
-    if (videoMediums.includes(utmMedium)) return "Paid Video";
-    if (displayMediums.includes(utmMedium)) return "Display";
-    if (gadSource === "1") return "Paid Search";
-    if (/video/.test(utmCampaign)) return "Paid Video";
-    return "Paid Unknown";
-  }
-
-  // Direct
+  // Direct traffic
   if (
     (referringDomain === "$direct" || (!referrer && !selfReferral)) &&
     !utmMedium &&
@@ -193,34 +208,92 @@ export function getChannel(
     return "Direct";
   }
 
-  // Organic channels - with referrer domain check prioritized for more accurate detection
-  // This is the key part that handles organic search from Google clicks without UTM params
-  if (isDomainSearch) return "Organic Search";
-  if (isDomainSocial) return "Organic Social";
-  if (isDomainVideo) return "Organic Video";
-  if (isDomainShopping) return "Organic Shopping";
+  // Paid channels - use intelligent categorization
+  if (isPaid) {
+    switch (sourceType) {
+      case "search":
+        return "Paid Search";
+      case "social":
+        return "Paid Social";
+      case "video":
+        return "Paid Video";
+      case "shopping":
+        return "Paid Shopping";
+      default:
+        // Fall back to medium-based detection for paid traffic
+        switch (mediumType) {
+          case "social":
+            return "Paid Social";
+          case "video":
+            return "Paid Video";
+          case "display":
+          case "cpm":
+            return "Display";
+          case "cpc":
+            return "Paid Search";
+          case "influencer":
+            return "Paid Influencer";
+          case "audio":
+            return "Paid Audio";
+          default:
+            return "Paid Unknown";
+        }
+    }
+  }
 
-  // Then check UTM parameters if referrer didn't match
-  if (isSourceSearch) return "Organic Search";
-  if (isSourceSocial) return "Organic Social";
-  if (isSourceVideo) return "Organic Video";
-  if (isSourceShopping) return "Organic Shopping";
-  if (isSourceEmail || emailMediums.includes(utmMedium)) return "Email";
-  if (isSourceSMS) return "SMS";
+  // Organic channels - prioritize source type detection
+  switch (sourceType) {
+    case "search":
+      return "Organic Search";
+    case "social":
+      return "Organic Social";
+    case "video":
+      return "Organic Video";
+    case "shopping":
+      return "Organic Shopping";
+    case "email":
+      return "Email";
+    case "sms":
+      return "SMS";
+    case "news":
+      return "News";
+    case "productivity":
+      return "Productivity";
+  }
 
-  // Medium-based detection
-  if (socialMediums.includes(utmMedium)) return "Organic Social";
-  if (videoMediums.includes(utmMedium)) return "Organic Video";
-  if (affiliateMediums.includes(utmMedium)) return "Affiliate";
-  if (referralMediums.includes(utmMedium)) return "Referral";
-  if (displayMediums.includes(utmMedium)) return "Display";
-  if (audioMediums.includes(utmMedium)) return "Audio";
-  if (pushMediums.includes(utmMedium) || utmMedium.endsWith("push"))
-    return "Push";
+  // Medium-based detection for organic traffic
+  switch (mediumType) {
+    case "social":
+      return "Organic Social";
+    case "video":
+      return "Organic Video";
+    case "affiliate":
+      return "Affiliate";
+    case "referral":
+      return "Referral";
+    case "display":
+      return "Display";
+    case "audio":
+      return "Audio";
+    case "push":
+      return "Push";
+    case "influencer":
+      return "Influencer";
+    case "content":
+      return "Content";
+    case "event":
+      return "Event";
+    case "email":
+      return "Email";
+  }
 
-  // Campaign-based detection
+  // Campaign-based detection as fallback
   if (/video/.test(utmCampaign)) return "Organic Video";
   if (/shop|shopping/.test(utmCampaign)) return "Organic Shopping";
+  if (/influencer|creator|sponsored/.test(utmCampaign)) return "Influencer";
+  if (/event|conference|webinar/.test(utmCampaign)) return "Event";
+  if (/social|facebook|twitter|instagram|linkedin/.test(utmCampaign))
+    return "Organic Social";
 
   // If referring domain exists but we couldn't categorize it
   // Don't mark as referral if it's a self-referral

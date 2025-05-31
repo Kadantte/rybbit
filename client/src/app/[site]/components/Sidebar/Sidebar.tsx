@@ -1,24 +1,27 @@
 "use client";
-import { CursorClick, Funnel, Target } from "@phosphor-icons/react/dist/ssr";
+import { Funnel, Target } from "@phosphor-icons/react/dist/ssr";
 import {
-  ChartBarDecreasing,
   Earth,
+  Gauge,
   LayoutDashboard,
   LayoutGrid,
+  Map,
+  MousePointerClick,
   Rewind,
   Settings,
-  User,
-  Map,
   Split,
-  MousePointerClick,
+  User,
+  File,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useGetSite } from "../../../../api/admin/sites";
 import { SiteSettings } from "../../../../components/SiteSettings/SiteSettings";
 import { authClient } from "../../../../lib/auth";
+import { cn } from "../../../../lib/utils";
 import LiveUserCount from "./LiveUserCount";
 import { SiteSelector } from "./SiteSelector";
+import { IS_CLOUD } from "../../../../lib/const";
 
 export function Sidebar() {
   const session = authClient.useSession();
@@ -53,12 +56,26 @@ export function Sidebar() {
           href={getTabPath("main")}
           icon={<LayoutDashboard className="w-4 h-4" />}
         />
+        {/* <SidebarLink
+          label="Pages"
+          active={isActiveTab("pages")}
+          href={getTabPath("pages")}
+          icon={<File className="w-4 h-4" />}
+        /> */}
         <SidebarLink
           label="Realtime"
           active={isActiveTab("realtime")}
           href={getTabPath("realtime")}
           icon={<Earth className="w-4 h-4" />}
         />
+        {IS_CLOUD && (
+          <SidebarLink
+            label="Performance"
+            active={isActiveTab("performance")}
+            href={getTabPath("performance")}
+            icon={<Gauge className="w-4 h-4" />}
+          />
+        )}
         <SidebarLink
           label="Map"
           active={isActiveTab("map")}
@@ -146,11 +163,12 @@ function SidebarLink({
   return (
     <Link href={href} className="focus:outline-none">
       <div
-        className={`px-3 py-2 rounded-lg transition-colors w-full ${
+        className={cn(
+          "px-3 py-2 rounded-lg transition-colors w-full",
           active
             ? "bg-neutral-800 text-white"
             : "text-neutral-200 hover:text-white hover:bg-neutral-800/50"
-        }`}
+        )}
       >
         <div className="flex items-center gap-2">
           {icon}

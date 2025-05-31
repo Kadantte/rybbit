@@ -8,15 +8,16 @@ import { useEffect, useState } from "react";
 import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { userStore } from "../lib/userStore";
+import { cn } from "../lib/utils";
 import "./globals.css";
+import Script from "next/script";
+import { useStopImpersonation } from "@/hooks/useStopImpersonation";
+import { ReactScan } from "./ReactScan";
+import { OrganizationInitializer } from "../components/OrganizationInitializer";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// const manrope = Manrope({
-//   subsets: ["latin"],
-// });
-
-const publicRoutes = ["/login", "/signup"];
+const publicRoutes = ["/login", "/signup", "/invitation", "/reset-password"];
 
 // Helper function to check if a site is public
 async function checkIfSiteIsPublic(siteId: string): Promise<boolean> {
@@ -42,6 +43,9 @@ export default function RootLayout({
   const [isCheckingPublic, setIsCheckingPublic] = useState(false);
   const [isPublicSite, setIsPublicSite] = useState(false);
 
+  // Use the hook to expose stopImpersonating globally
+  useStopImpersonation();
+
   useEffect(() => {
     // Check if the current path could be a site path
     // Extract potential siteId from path like /{siteId} or /{siteId}/something
@@ -50,10 +54,7 @@ export default function RootLayout({
       const potentialSiteId = pathSegments[0];
 
       // Don't check for public site status on obvious non-site paths
-      if (
-        !publicRoutes.includes(`/${potentialSiteId}`) &&
-        !["_next", "api", "settings", "subscribe"].includes(potentialSiteId)
-      ) {
+      if (!isNaN(Number(potentialSiteId))) {
         setIsCheckingPublic(true);
 
         checkIfSiteIsPublic(potentialSiteId).then((isPublic) => {
@@ -83,14 +84,28 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="dark">
+      <ReactScan />
       <TooltipProvider>
         <body
-          className={`${inter.className} bg-background text-foreground h-full`}
+          className={cn(
+            "bg-background text-foreground h-full",
+            inter.className
+          )}
         >
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <OrganizationInitializer />
+            {children}
+          </QueryProvider>
           <Toaster />
         </body>
       </TooltipProvider>
+      {globalThis?.location?.hostname === "app.rybbit.io" && (
+        <Script
+          src="https://demo.rybbit.io/api/script.js"
+          data-site-id="22"
+          strategy="afterInteractive"
+        />
+      )}
     </html>
   );
 }

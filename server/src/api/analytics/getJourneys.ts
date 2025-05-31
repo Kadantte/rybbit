@@ -10,20 +10,34 @@ export const getJourneys = async (
       steps?: string;
       startDate?: string;
       endDate?: string;
-      timezone?: string;
+      timeZone?: string;
+      limit?: string;
     };
   }>,
   reply: FastifyReply
 ) => {
   try {
     const { site } = request.params;
-    const { steps = "3", startDate, endDate, timezone = "UTC" } = request.query;
+    const {
+      steps = "3",
+      startDate,
+      endDate,
+      timeZone = "UTC",
+      limit = "100",
+    } = request.query;
 
     const maxSteps = parseInt(steps, 10);
+    const journeyLimit = parseInt(limit, 10);
 
     if (isNaN(maxSteps) || maxSteps < 2 || maxSteps > 10) {
       return reply.status(400).send({
         error: "Steps parameter must be a number between 2 and 10",
+      });
+    }
+
+    if (isNaN(journeyLimit) || journeyLimit < 1 || journeyLimit > 500) {
+      return reply.status(400).send({
+        error: "Limit parameter must be a number between 1 and 500",
       });
     }
 
@@ -35,7 +49,7 @@ export const getJourneys = async (
               startDate:
                 startDate || DateTime.now().minus({ days: 30 }).toISODate(),
               endDate: endDate || DateTime.now().toISODate(),
-              timezone,
+              timeZone,
               table: "events",
             }
           : undefined,
@@ -71,7 +85,7 @@ export const getJourneys = async (
           FROM user_paths
           GROUP BY journey
           ORDER BY sessions_count DESC
-          LIMIT 100
+          LIMIT {journeyLimit:Int32}
         )
         
         SELECT
@@ -87,7 +101,8 @@ export const getJourneys = async (
       `,
       query_params: {
         siteId: parseInt(site, 10),
-        maxSteps: parseInt(steps, 10),
+        maxSteps: maxSteps,
+        journeyLimit: journeyLimit,
       },
     });
 

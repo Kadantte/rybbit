@@ -15,6 +15,7 @@ interface ScriptBuilderProps {
 export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
   // Script configuration options
   const [debounceValue, setDebounceValue] = useState(500);
+  const [autoTrackPageview, setAutoTrackPageview] = useState(true);
   const [autoTrack, setAutoTrack] = useState(true);
   const [trackQuery, setTrackQuery] = useState(true);
   const [trackOutbound, setTrackOutbound] = useState(true);
@@ -95,6 +96,11 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
     data-debounce="${debounceValue}"`
       : ""
   }${
+    !autoTrackPageview
+      ? `
+    data-auto-track-pageview="false"`
+      : ""
+  }${
     !autoTrack
       ? `
     data-track-spa="false"`
@@ -138,6 +144,28 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
 
         {/* Script Options Section */}
         <div className="space-y-4">
+          {/* Auto Track Initial Pageview Option */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label
+                  htmlFor="autoTrackPageview"
+                  className="text-sm font-medium text-foreground block"
+                >
+                  Automatically track initial pageview
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Track the first pageview when the script loads
+                </p>
+              </div>
+              <Switch
+                id="autoTrackPageview"
+                checked={autoTrackPageview}
+                onCheckedChange={setAutoTrackPageview}
+              />
+            </div>
+          </div>
+
           {/* Auto Track (SPA) Option */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
