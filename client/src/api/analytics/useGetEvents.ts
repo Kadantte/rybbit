@@ -3,6 +3,7 @@ import { Time } from "../../components/DateSelector/types";
 import { BACKEND_URL } from "../../lib/const";
 import { useStore } from "../../lib/store";
 import { authedFetchWithError, buildUrl, getStartAndEndDate } from "../utils";
+import { timeZone } from "../../lib/dateTimeUtils";
 
 export type Event = {
   timestamp: string;
@@ -57,7 +58,6 @@ export function useGetEventsInfinite(options: GetEventsOptions = {}) {
   const { startDate, endDate } = options.time
     ? getStartAndEndDate(options.time)
     : getStartAndEndDate(time);
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const pageSize = options.pageSize || 20;
 
   return useInfiniteQuery<EventsResponse, Error>({
@@ -66,7 +66,7 @@ export function useGetEventsInfinite(options: GetEventsOptions = {}) {
       site,
       startDate,
       endDate,
-      timezone,
+      timeZone,
       filters,
       pageSize,
       options.isRealtime,
@@ -76,7 +76,7 @@ export function useGetEventsInfinite(options: GetEventsOptions = {}) {
       const params: Record<string, any> = {
         startDate,
         endDate,
-        timezone,
+        timeZone,
         page: pageParam,
         pageSize,
       };

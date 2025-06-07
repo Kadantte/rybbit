@@ -32,6 +32,7 @@ export type FilterParameter =
   | "city"
   | "device_type"
   | "referrer"
+  | "hostname"
   | "pathname"
   | "page_title"
   | "querystring"
@@ -45,9 +46,12 @@ export type FilterParameter =
   // derivative parameters
   | "entry_page"
   | "exit_page"
-  | "dimensions";
+  | "dimensions"
+  | "browser_version"
+  | "operating_system_version";
 
 export const SESSION_PAGE_FILTERS: FilterParameter[] = [
+  "hostname",
   "browser",
   "operating_system",
   "language",
@@ -74,7 +78,7 @@ export const EVENT_FILTERS: FilterParameter[] = [
   // "country",
   // "device_type",
   // "referrer",
-
+  "hostname",
   "browser",
   "operating_system",
   "language",
@@ -99,6 +103,7 @@ export const EVENT_FILTERS: FilterParameter[] = [
 ];
 
 export const GOALS_PAGE_FILTERS: FilterParameter[] = [
+  "hostname",
   "browser",
   "operating_system",
   "language",
@@ -114,6 +119,7 @@ export const GOALS_PAGE_FILTERS: FilterParameter[] = [
 ];
 
 export const USER_PAGE_FILTERS: FilterParameter[] = [
+  "hostname",
   "browser",
   "operating_system",
   "language",
@@ -194,6 +200,11 @@ export const useStore = create<Store>((set) => ({
       previousTime = {
         mode: "day",
         day: DateTime.fromISO(time.day).minus({ days: 1 }).toISODate() ?? "",
+      };
+    } else if (time.mode === "last-24-hours") {
+      bucketToUse = "hour";
+      previousTime = {
+        mode: "last-24-hours",
       };
     } else if (time.mode === "range") {
       const timeRangeLength =

@@ -33,20 +33,6 @@ export const getCountryName = (countryCode: string) => {
   return countries[countryCode as keyof typeof countries]?.name;
 };
 
-export function formatDuration(seconds: number): string {
-  if (!seconds) return "0s";
-
-  const duration = Duration.fromObject({ seconds });
-
-  if (seconds < 60) {
-    return duration.toFormat("s'S'");
-  } else if (seconds < 3600) {
-    return duration.toFormat("m'm' s's'");
-  } else {
-    return duration.toFormat("h'h' m'm'");
-  }
-}
-
 export function truncateString(str: string, n = 50) {
   return str.length > n ? str.substring(0, n) + "..." : str;
 }

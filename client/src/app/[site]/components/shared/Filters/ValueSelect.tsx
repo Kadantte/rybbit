@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { getCountryName } from "../../../../../lib/utils";
+import { getCountryName, getLanguageName } from "../../../../../lib/utils";
 
 import { FilterParameter } from "../../../../../lib/store";
 
@@ -19,7 +19,7 @@ export function ValueSelect({
   value: string[];
   onChange: (values: string[]) => void;
 }) {
-  const { data, isLoading } = useSingleCol({
+  const { data, isFetching } = useSingleCol({
     parameter,
     limit: 1000,
     useFilters: false,
@@ -27,31 +27,30 @@ export function ValueSelect({
 
   const { getRegionName } = useGetRegionName();
 
+  const getValueLabel = (val: string) => {
+    if (parameter === "country") {
+      return getCountryName(val);
+    }
+    if (parameter === "region") {
+      return getRegionName(val);
+    }
+    if (parameter === "language") {
+      return getLanguageName(val);
+    }
+    return val;
+  };
+
   const suggestions = useMemo(() => {
     return (
       data?.data
         ?.map((item) => item.value)
         .filter(Boolean)
-        .map((val) => {
-          if (parameter === "country") {
-            return {
-              value: val,
-              label: getCountryName(val),
-            };
-          }
-          if (parameter === "region") {
-            return {
-              value: val,
-              label: getRegionName(val),
-            };
-          }
-          return {
-            value: val,
-            label: val,
-          };
-        }) || []
+        .map((val) => ({
+          value: val,
+          label: getValueLabel(val),
+        })) || []
     );
-  }, [data]);
+  }, [data, parameter, getRegionName]);
 
   const handleChange = (selected: any) => {
     const values = selected.map((item: { value: string }) => item.value);
@@ -60,19 +59,14 @@ export function ValueSelect({
 
   return (
     <MultiSelect
-      value={value.map((val) => {
-        if (parameter === "country") {
-          return { value: val, label: getCountryName(val) };
-        }
-        if (parameter === "region") {
-          return { value: val, label: getRegionName(val) };
-        }
-        return { value: val, label: val };
-      })}
-      options={suggestions}
+      value={value.map((val) => ({
+        value: val,
+        label: getValueLabel(val),
+      }))}
+      options={isFetching ? [] : suggestions}
       onChange={handleChange}
       placeholder="Select values..."
-      isLoading={isLoading}
+      isLoading={isFetching}
     />
   );
 }

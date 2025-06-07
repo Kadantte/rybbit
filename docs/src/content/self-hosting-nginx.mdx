@@ -61,7 +61,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://localhost:3001/;  # Backend port
+        proxy_pass http://localhost:3001;  # Backend port
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -70,8 +70,8 @@ server {
 }
 ```
 
-<Callout type="warning">
-  Note the trailing slash in the proxy_pass for the API location. This is important to correctly strip the `/api/` prefix when forwarding requests to the backend service.
+<Callout type="info">
+  The backend service expects requests to include the `/api/` prefix, so we proxy requests directly without path rewriting.
 </Callout>
 
 ### 4. Enable the Site Configuration
@@ -108,6 +108,7 @@ sudo cat /etc/nginx/sites-available/rybbit
 ```
 
 It should include SSL certificate paths and a server block for HTTPS.
+
 </Steps>
 
 ## Certificate Renewal
@@ -128,20 +129,27 @@ sudo certbot renew --dry-run
 
 If you encounter issues:
 
-1. Check Nginx error logs:
+1. Make sure your firewall is open to allow HTTP and HTTPS traffic.
+   ```bash
+   sudo ufw allow 80/tcp
+   sudo ufw allow 443/tcp
+   sudo ufw status
+   ```
+
+2. Check Nginx error logs:
    ```bash
    sudo tail -f /var/log/nginx/error.log
    ```
 
-2. Verify that the Docker containers are running and exposing the correct ports:
+3. Verify that the Docker containers are running and exposing the correct ports:
    ```bash
    docker ps
    ```
 
-3. Test connectivity to the backend and client services:
+4. Test connectivity to the backend and client services:
    ```bash
    curl -v http://localhost:3001
    curl -v http://localhost:3002
    ```
 
-4. If the Certbot automatic configuration fails, you can manually add SSL configuration to your Nginx server block.
+5. If the Certbot automatic configuration fails, you can manually add SSL configuration to your Nginx server block.

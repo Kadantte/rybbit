@@ -63,7 +63,7 @@ server {
 
     # API requests - adjust port if you customized it
     location /api/ {
-        proxy_pass http://localhost:3001/;  # or your custom port
+        proxy_pass http://localhost:3001;  # or your custom port
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -84,14 +84,16 @@ server {
 For a detailed step-by-step guide on setting up Nginx with SSL certificates using Certbot, see our [Nginx Setup Guide](/docs/self-hosting-nginx).
 
 ## Docker Compose setup with NPM, without exposing ports
-_this setup assumes you have NPM docker up and running and are capable of creating SSL certs for your local hosts. Ideally, also use Technitium to create a DNS entry_
+_this setup assumes you have [NPM docker](https://nginxproxymanager.com) up and running and are capable of creating SSL certs for your local hosts. Ideally, also use Technitium to create a DNS entry_
+
+Note, of course you can use any othert proxy of your choice, sa long you can somehow put it on the same network as Rybbit Docker and edit location rules.
 
 1. Create a `docker-compose.yml` file in your project folder with these contents:
 ```
 services:
   rybbit_clickhouse:
-    container_name: rybbit_clickhouse
     image: clickhouse/clickhouse-server:25.4.2
+    container_name: rybbit_clickhouse
     volumes:
       - ./clickhouse-data:/var/lib/clickhouse
       - ./clickhouse_config:/etc/clickhouse-server/config.d
@@ -118,6 +120,12 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-analytics}
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     networks:
       - internal
@@ -143,6 +151,12 @@ services:
         condition: service_healthy
       rybbit_postgres:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
     networks:
       - internal
@@ -154,6 +168,7 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
+      - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
     depends_on:
       - rybbit_backend
     restart: unless-stopped
@@ -182,16 +197,15 @@ HOST_CLIENT_PORT=3002
 
 5. Make sure to create your external network `npm_proxy` and make sure NPM is on it as well
 
-6. Create your NPM host entry for `rybbit_client` (point it to port 3002) and in that host, add a custom location for `/api`, pointing it to `rybbit_backend` port 3002. 
+6. Create your NPM host entry for `rybbit_client` (point it to port 3002) and in that host, add a custom location for `/api`, pointing it to `rybbit_backend` port 3001. 
 
 Hint: In the Custom Location add a custom rule:
 ```
 location /api/ {
-    rewrite ^/api(/.*)$ $1 break;
     proxy_pass http://rybbit_backend:3001;
 }
 ```
-_note, this might not be necessary anymore, check https://github.com/rybbit-io/rybbit/issues/135_
+_Note: Path rewriting is no longer needed as the backend now expects requests with the `/api/` prefix._
 
 7. run `docker compose up -d` (or separately pull and up)
 

@@ -1,13 +1,15 @@
 /* eslint-env node */
 import { Tilt_Warp } from "next/font/google";
 import Image from "next/image";
-import { Footer, Layout, Navbar } from "nextra-theme-docs";
-import "nextra-theme-docs/style.css";
-import { Head, Banner } from "nextra/components";
-import { getPageMap } from "nextra/page-map";
-import "./globals.css";
-import { SmallLogo } from "./components/Logo";
 import Link from "next/link";
+import { Layout, Navbar } from "nextra-theme-docs";
+import "nextra-theme-docs/style.css";
+import { Head } from "nextra/components";
+import { getPageMap } from "nextra/page-map";
+import { cn } from "../lib/utils";
+import { SmallLogo } from "./components/Logo";
+import "./globals.css";
+import { PostHogProvider } from "./providers";
 
 const tilt_wrap = Tilt_Warp({
   subsets: ["latin"],
@@ -18,21 +20,45 @@ export const metadata = {
   metadataBase: new URL("https://rybbit.io"),
   title: {
     template: "%s - Rybbit",
+    default: "Rybbit - The Modern Google Analytics Replacement",
   },
   description:
     "Next-gen, open source, lightweight, cookieless web & product analytics for everyone.",
   // description: 'Next-gen, open source, lightweight, cookieless web & product analytics for everyone — GDPR/CCPA compliant.',
   applicationName: "Rybbit",
   generator: "Next.js",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://rybbit.io",
+    siteName: "Rybbit",
+    title: "Rybbit - The Modern Google Analytics Replacement",
+    description:
+      "Next-gen, open source, lightweight, cookieless web & product analytics for everyone.",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Rybbit - The Modern Google Analytics Replacement",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@rybbit_io",
+    creator: "@rybbit_io",
+    title: "Rybbit - The Modern Google Analytics Replacement",
+    description:
+      "Next-gen, open source, lightweight, cookieless web & product analytics for everyone.",
+    images: ["/opengraph-image.png"],
+  },
   appleWebApp: {
     title: "Rybbit",
   },
   other: {
     "msapplication-TileImage": "/ms-icon-144x144.png",
     "msapplication-TileColor": "#fff",
-  },
-  twitter: {
-    site: "https://rybbit.io",
   },
 };
 
@@ -70,7 +96,10 @@ export default async function RootLayout({ children }) {
     <Navbar
       logo={
         <div
-          className={`text-2xl flex items-center gap-1.5 ${tilt_wrap.className}`}
+          className={cn(
+            "text-2xl flex items-center gap-1.5",
+            tilt_wrap.className
+          )}
         >
           <Image src="/rybbit.png" alt="Rybbit" width={30} height={30} />
           rybbit.
@@ -80,7 +109,7 @@ export default async function RootLayout({ children }) {
       projectLink="https://github.com/rybbit-io/rybbit"
       children={
         <a href="https://app.rybbit.io">
-          <button className="bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium px-3 py-1.5 rounded-md border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50">
+          <button className="bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium px-3 py-1.5 rounded-md border border-neutral-600 transform hover:-translate-y-0.5 transition-all duration-200 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-opacity-50 cursor-pointer">
             Login
           </button>
         </a>
@@ -97,37 +126,60 @@ export default async function RootLayout({ children }) {
           lightness: 51,
         }}
       />
-      <script src="https://app.rybbit.io/api/script.js" site-id="2" defer />
+      {/* <script
+        src="https://app.rybbit.io/api/script.js"
+        site-id="2"
+        defer
+        data-enable-replay="true"
+      /> */}
+      <script
+        src="https://demo.rybbit.io/api/script.js"
+        data-site-id="21"
+        defer
+        data-enable-replay="true"
+      ></script>
+      <script
+        src="https://amdtest.tomato.gg/api/script.js"
+        data-site-id="2"
+        defer
+        data-enable-replay="true"
+      ></script>
       <body>
-        <Layout
-          banner={
-            <div className="text-center text-sm text-neutral-100 pt-2 pb-1 bg-neutral-700/50 flex items-center justify-center gap-2">
-              <div className="mb-1">
-                🚀 We just launched! Please star us on Github!{" "}
+        <PostHogProvider>
+          <Layout
+            banner={
+              <div className="text-center text-sm text-neutral-100 pt-2 pb-1 bg-neutral-700/50 flex items-center justify-center gap-2">
+                <div className="mb-1">
+                  🚀 We just launched! Please star us on Github!{" "}
+                </div>
+                <a
+                  className="github-button"
+                  href="https://github.com/rybbit-io/rybbit"
+                  data-color-scheme="no-preference: light; light: light; dark: light;"
+                  data-show-count="true"
+                  aria-label="Star rybbit-io/rybbit on GitHub"
+                ></a>
               </div>
-              <a
-                className="github-button"
-                href="https://github.com/rybbit-io/rybbit"
-                data-color-scheme="no-preference: light; light: light; dark: light;"
-                data-show-count="true"
-                aria-label="Star rybbit-io/rybbit on GitHub"
-              ></a>
-            </div>
-          }
-          navbar={navbar}
-          footer={<Footer_ />}
-          editLink="Edit this page on GitHub"
-          docsRepositoryBase="https://github.com/rybbit-io/rybbit/tree/master/docs"
-          sidebar={{ defaultMenuCollapseLevel: 1 }}
-          pageMap={pageMap}
-          nextThemes={{
-            defaultTheme: "dark",
-            forcedTheme: "dark",
-          }}
-        >
-          {children}
-        </Layout>
-        <script async defer src="https://buttons.github.io/buttons.js"></script>
+            }
+            navbar={navbar}
+            footer={<Footer_ />}
+            editLink="Edit this page on GitHub"
+            docsRepositoryBase="https://github.com/rybbit-io/rybbit/tree/master/docs"
+            sidebar={{ defaultMenuCollapseLevel: 1 }}
+            pageMap={pageMap}
+            nextThemes={{
+              defaultTheme: "dark",
+              forcedTheme: "dark",
+            }}
+          >
+            {children}
+          </Layout>
+          <script
+            async
+            defer
+            src="https://buttons.github.io/buttons.js"
+          ></script>
+        </PostHogProvider>
       </body>
     </html>
   );

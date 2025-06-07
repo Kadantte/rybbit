@@ -40,14 +40,16 @@ export async function getGoals(
       site: string;
     };
     Querystring: {
-      startDate: string;
-      endDate: string;
-      timezone: string;
+      startDate?: string;
+      endDate?: string;
+      timeZone: string;
       filters?: string;
       page?: string;
       pageSize?: string;
       sort?: string;
       order?: "asc" | "desc";
+      pastMinutesStart?: string;
+      pastMinutesEnd?: string;
     };
   }>,
   reply: FastifyReply
@@ -56,12 +58,14 @@ export async function getGoals(
   const {
     startDate,
     endDate,
-    timezone,
+    timeZone,
     filters,
     page = "1",
     pageSize = "10",
     sort = "createdAt",
     order = "desc",
+    pastMinutesStart,
+    pastMinutesEnd,
   } = request.query;
 
   const pageNumber = parseInt(page, 10);
@@ -149,9 +153,21 @@ export async function getGoals(
 
     // Build filter and time clauses for ClickHouse queries
     const filterStatement = filters ? getFilterStatement(filters) : "";
-    const timeStatement = getTimeStatement({
-      date: { startDate, endDate, timezone },
-    });
+
+    // Handle specific past minutes range if provided
+    const pastMinutesRange =
+      pastMinutesStart && pastMinutesEnd
+        ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+        : undefined;
+
+    // Set up time parameters
+    const timeParams = pastMinutesRange
+      ? { pastMinutesRange }
+      : startDate || endDate
+        ? { date: { startDate, endDate, timeZone } }
+        : {};
+
+    const timeStatement = getTimeStatement(timeParams);
 
     // First, get the total number of unique sessions (denominator for conversion rate)
     const totalSessionsQuery = `
@@ -272,9 +288,8 @@ export async function getGoals(
       format: "JSONEachRow",
     });
 
-    const conversionData = await processResults<Record<string, number>>(
-      conversionResult
-    );
+    const conversionData =
+      await processResults<Record<string, number>>(conversionResult);
 
     // If we didn't get any results, use zeros
     const conversions = conversionData[0] || {};

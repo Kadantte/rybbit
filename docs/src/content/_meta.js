@@ -5,9 +5,11 @@ export default {
     type: "separator",
     title: "Tracking",
   },
-  tracker: "",
+  script: "",
   "track-events": "",
-  integrations: "",
+  sdks: "SDKs",
+  guides: "",
+  "hiding-own-traffic": "",
   _4: {
     type: "separator",
     title: "Self-hosting",
@@ -15,21 +17,17 @@ export default {
   "self-hosting": "",
   "self-hosting-advanced": "",
   "self-hosting-nginx": "",
-  _5: {
-    type: "separator",
-    title: "SDKs",
-  },
-  web: "",
-  _7: {
+  "v1-migration": "",
+  _6: {
     type: "separator",
     title: "Settings",
   },
-  "adding-users": "",
+  "inviting-users": "",
   "public-site": "",
   "enhanced-privacy": "",
   "changing-domains": "",
   "deleting-sites": "",
-  _8: {
+  _7: {
     type: "separator",
     title: "Other",
   },

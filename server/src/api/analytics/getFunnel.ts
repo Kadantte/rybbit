@@ -28,7 +28,7 @@ type Funnel = {
   steps: FunnelStep[];
   startDate: string;
   endDate: string;
-  timezone: string;
+  timeZone: string;
   filters?: Filter[];
 };
 
@@ -49,7 +49,7 @@ export async function getFunnel(
   }>,
   reply: FastifyReply
 ) {
-  const { steps, startDate, endDate, timezone, filters } = request.body;
+  const { steps, startDate, endDate, timeZone, filters } = request.body;
   const { site } = request.params;
 
   // Validate request
@@ -69,7 +69,7 @@ export async function getFunnel(
   try {
     // Create the time statement for the date range
     const timeStatement = getTimeStatement({
-      date: { startDate, endDate, timezone },
+      date: { startDate, endDate, timeZone },
     });
 
     // Get filter conditions using the existing utility function

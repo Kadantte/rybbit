@@ -12,7 +12,7 @@ interface LocationResponse {
   countryIso?: string;
   latitude?: number;
   longitude?: number;
-  timezone?: string;
+  timeZone?: string;
   error?: string;
   subdivisions?: SubdivisionsRecord[];
 }
@@ -40,7 +40,7 @@ function extractLocationData(response: City): LocationResponse {
     countryIso: response.country?.isoCode,
     latitude: response.location?.latitude,
     longitude: response.location?.longitude,
-    timezone: response.location?.timeZone,
+    timeZone: response.location?.timeZone,
     subdivisions: response.subdivisions,
   };
 }

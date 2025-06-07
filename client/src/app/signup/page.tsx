@@ -1,13 +1,15 @@
 "use client";
 
+import { AuthButton } from "@/components/auth/AuthButton";
+import { AuthError } from "@/components/auth/AuthError";
+import { AuthInput } from "@/components/auth/AuthInput";
+import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GithubLogo, GoogleLogo } from "@phosphor-icons/react/dist/ssr";
 import { motion } from "framer-motion";
 import {
-  AlertCircle,
   AppWindow,
   ArrowLeft,
   ArrowRight,
@@ -17,17 +19,19 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { addSite } from "../../api/admin/sites";
 import { CodeSnippet } from "../../components/CodeSnippet";
-import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
-import { authClient } from "../../lib/auth";
-import { BACKEND_URL, IS_CLOUD } from "../../lib/const";
-import { userStore } from "../../lib/userStore";
 import { Logo } from "../../components/Logo";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
+import { authClient } from "../../lib/auth";
+import { useConfigs } from "../../lib/configs";
+import { IS_CLOUD } from "../../lib/const";
+import { userStore } from "../../lib/userStore";
+import { cn } from "../../lib/utils";
 
 // Animation variants for step transitions
 const contentVariants = {
@@ -50,6 +54,7 @@ function StepHandler({ onSetStep }: { onSetStep: (step: number) => void }) {
 }
 
 export default function SignupPage() {
+  const { configs, isLoading: isLoadingConfigs } = useConfigs();
   useSetPageTitle("Rybbit · Signup");
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -59,7 +64,6 @@ export default function SignupPage() {
 
   // Step 1: Account creation
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
 
   // Step 2: Organization creation
@@ -100,7 +104,7 @@ export default function SignupPage() {
     try {
       const { data, error } = await authClient.signUp.email({
         email,
-        name,
+        name: email.split("@")[0], // Use email prefix as default name
         password,
       });
 
@@ -213,90 +217,46 @@ export default function SignupPage() {
           >
             <h2 className="text-2xl font-semibold mb-6">Create your account</h2>
             <div className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-10 transition-all bg-neutral-800/50 border-neutral-700"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="email@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-10 transition-all bg-neutral-800/50 border-neutral-700"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 transition-all bg-neutral-800/50 border-neutral-700"
-                />
-              </div>
-              <Button
+              <AuthInput
+                id="email"
+                label="Email"
+                type="email"
+                placeholder="email@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+
+              <AuthInput
+                id="password"
+                label="Password"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+
+              <AuthButton
+                isLoading={isLoading}
+                loadingText="Creating account..."
                 onClick={handleAccountSubmit}
-                className="w-full mt-6 transition-all duration-300 h-11 bg-emerald-600 hover:bg-emerald-500 text-white"
-                disabled={isLoading || !email || !password}
-                variant="success"
+                type="button"
+                className="mt-6 transition-all duration-300 h-11"
               >
-                {isLoading ? "Creating account..." : "Continue"}
+                Continue
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              </AuthButton>
 
               {IS_CLOUD && (
-                <>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        authClient.signIn.social({
-                          provider: "google",
-                          callbackURL: "/signup?step=2",
-                        });
-                      }}
-                      className="transition-all duration-300 hover:bg-muted bg-neutral-800/50 border-neutral-700"
-                    >
-                      <GoogleLogo weight="bold" />
-                      Google
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        authClient.signIn.social({
-                          provider: "github",
-                          callbackURL: "/signup?step=2",
-                        });
-                      }}
-                      className="transition-all duration-300 hover:bg-muted bg-neutral-800/50 border-neutral-700"
-                    >
-                      <GithubLogo weight="bold" />
-                      GitHub
-                    </Button>
-                  </div>
-                </>
+                <SocialButtons
+                  onError={setError}
+                  callbackURL="/signup?step=2"
+                  mode="signup"
+                  className="grid grid-cols-2 gap-2"
+                />
               )}
+
               <div className="text-center text-sm">
                 Already have an account?{" "}
                 <Link
@@ -306,6 +266,8 @@ export default function SignupPage() {
                   Log in
                 </Link>
               </div>
+
+              <AuthError error={error} />
             </div>
           </motion.div>
         );
@@ -393,7 +355,7 @@ export default function SignupPage() {
                   type="text"
                   placeholder="example.com or sub.example.com"
                   value={domain}
-                  onChange={(e) => setDomain(e.target.value)}
+                  onChange={(e) => setDomain(e.target.value.toLowerCase())}
                   required
                   className="h-10 transition-all bg-neutral-800/50 border-neutral-700"
                 />
@@ -492,6 +454,37 @@ export default function SignupPage() {
   // Calculate progress percentage
   const progressPercentage = ((currentStep - 1) / 3) * 100;
 
+  if (isLoadingConfigs) {
+    return null;
+  }
+
+  if (configs?.disableSignup) {
+    return (
+      <div className="flex justify-center items-center h-screen w-full">
+        <Card className="w-full max-w-sm p-1">
+          <CardHeader>
+            <Image src="/rybbit.png" alt="Rybbit" width={32} height={32} />
+            <CardTitle className="text-2xl flex justify-center">
+              Sign Up Disabled
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-6">
+              <p className="text-center">
+                New account registration is currently disabled. If you have an
+                account, you can{" "}
+                <Link href="/login" className="underline">
+                  sign in
+                </Link>
+                .
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex justify-center items-center min-h-screen bg-background p-4 relative overflow-hidden">
       {/* Suspense boundary for the URL parameter handler */}
@@ -524,26 +517,24 @@ export default function SignupPage() {
               {[1, 2, 3, 4].map((step) => (
                 <div
                   key={step}
-                  className={`flex items-center space-x-3 py-3 ${
+                  className={cn(
+                    "flex items-center space-x-3 py-3",
                     currentStep === step
                       ? "text-emerald-400 font-medium"
                       : currentStep > step
                       ? "text-muted-foreground"
                       : "text-muted-foreground/60"
-                  }`}
+                  )}
                 >
                   <div
-                    className={`
-                      flex items-center justify-center w-8 h-8 rounded-full 
-                      ${
-                        currentStep === step
-                          ? "bg-emerald-600 text-primary-foreground"
-                          : currentStep > step
-                          ? "bg-emerald-600/20 text-emerald-400"
-                          : "bg-muted-foreground/20 text-muted-foreground"
-                      }
-                      transition-all duration-300
-                    `}
+                    className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300",
+                      currentStep === step
+                        ? "bg-emerald-600 text-primary-foreground"
+                        : currentStep > step
+                        ? "bg-emerald-600/20 text-emerald-400"
+                        : "bg-muted-foreground/20 text-muted-foreground"
+                    )}
                   >
                     {currentStep > step ? (
                       <Check className="h-4 w-4" />
@@ -564,13 +555,7 @@ export default function SignupPage() {
 
           {/* Right content area */}
           <div className="p-6 md:p-8 flex-1 h-[600px] flex flex-col backdrop-blur-sm bg-neutral-900/50">
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            {error && <AuthError error={error} />}
 
             <div className="flex-1 flex flex-col justify-between">
               <div className="min-h-[400px]">{renderStepContent()}</div>

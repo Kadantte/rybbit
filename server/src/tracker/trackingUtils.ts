@@ -118,13 +118,17 @@ export async function getExistingSession(userId: string, siteId: string) {
 // Create base tracking payload from request
 export function createBasePayload(
   request: FastifyRequest,
-  eventType: "pageview" | "custom_event" = "pageview",
+  eventType: "pageview" | "custom_event" | "performance" = "pageview",
   validatedBody: ValidatedTrackingPayload
 ): TotalTrackingPayload {
   const userAgent = request.headers["user-agent"] || "";
   const ipAddress = getIpAddress(request);
   const siteId = validatedBody.site_id;
-  const userId = getUserId(ipAddress, userAgent, siteId);
+
+  // Use custom user ID if provided, otherwise generate one
+  const userId = validatedBody.user_id
+    ? validatedBody.user_id.trim()
+    : getUserId(ipAddress, userAgent, siteId);
 
   return {
     ...validatedBody,

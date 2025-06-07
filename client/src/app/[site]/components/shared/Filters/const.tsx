@@ -9,7 +9,6 @@ import {
   Link,
   LogIn,
   LogOut,
-  MapPin,
   MapPinHouse,
   MapPinned,
   Maximize,
@@ -18,7 +17,7 @@ import {
   Puzzle,
   Radio,
   Search,
-  Share2,
+  Server,
   TabletSmartphone,
   Tag,
   Target,
@@ -45,6 +44,11 @@ export const FilterOptions: {
     label: "Query",
     value: "querystring",
     icon: <Search className="h-4 w-4" />,
+  },
+  {
+    label: "Hostname",
+    value: "hostname",
+    icon: <Server className="h-4 w-4" />,
   },
   {
     label: "Event Name",
@@ -97,8 +101,18 @@ export const FilterOptions: {
     icon: <Brain className="h-4 w-4" />,
   },
   {
+    label: "Operating System Version",
+    value: "operating_system_version",
+    icon: <Brain className="h-4 w-4" />,
+  },
+  {
     label: "Browser",
     value: "browser",
+    icon: <AppWindow className="h-4 w-4" />,
+  },
+  {
+    label: "Browser Version",
+    value: "browser_version",
     icon: <AppWindow className="h-4 w-4" />,
   },
   {

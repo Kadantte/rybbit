@@ -6,8 +6,9 @@ import { Time } from "../../components/DateSelector/types";
 export interface JourneyParams {
   siteId?: number;
   steps?: number;
-  timezone?: string;
+  timeZone?: string;
   time: Time;
+  limit?: number;
 }
 
 export interface Journey {
@@ -23,13 +24,14 @@ export interface JourneysResponse {
 export const useJourneys = ({
   siteId,
   steps = 3,
-  timezone = "UTC",
+  timeZone = "UTC",
   time,
+  limit = 100,
 }: JourneyParams) => {
   const { startDate, endDate } = getStartAndEndDate(time);
 
   return useQuery<JourneysResponse>({
-    queryKey: ["journeys", siteId, steps, startDate, endDate, timezone],
+    queryKey: ["journeys", siteId, steps, startDate, endDate, timeZone, limit],
     queryFn: async () => {
       let url = `${BACKEND_URL}/journeys/${siteId}`;
       const params = new URLSearchParams();
@@ -37,7 +39,8 @@ export const useJourneys = ({
       if (steps) params.append("steps", steps.toString());
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
-      if (timezone) params.append("timezone", timezone);
+      if (timeZone) params.append("timeZone", timeZone);
+      if (limit) params.append("limit", limit.toString());
 
       const queryString = params.toString();
       if (queryString) url += `?${queryString}`;

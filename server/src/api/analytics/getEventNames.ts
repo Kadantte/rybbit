@@ -17,10 +17,12 @@ export interface GetEventNamesRequest {
     site: string;
   };
   Querystring: {
-    startDate: string;
-    endDate: string;
-    timezone: string;
+    startDate?: string;
+    endDate?: string;
+    timeZone: string;
     filters?: string;
+    pastMinutesStart?: string;
+    pastMinutesEnd?: string;
   };
 }
 
@@ -28,16 +30,31 @@ export async function getEventNames(
   req: FastifyRequest<GetEventNamesRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, filters } = req.query;
+  const {
+    startDate,
+    endDate,
+    timeZone,
+    filters,
+    pastMinutesStart,
+    pastMinutesEnd,
+  } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
     return res.status(403).send({ error: "Forbidden" });
   }
 
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
-  });
+  // Handle specific past minutes range if provided
+  const pastMinutesRange =
+    pastMinutesStart && pastMinutesEnd
+      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+      : undefined;
+
+  const timeStatement = getTimeStatement(
+    pastMinutesRange
+      ? { pastMinutesRange }
+      : { date: { startDate, endDate, timeZone } }
+  );
 
   const filterStatement = filters ? getFilterStatement(filters) : "";
 

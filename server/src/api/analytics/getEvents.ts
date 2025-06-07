@@ -31,7 +31,7 @@ interface GetEventsRequest {
   Querystring: {
     startDate?: string;
     endDate?: string;
-    timezone?: string;
+    timeZone?: string;
     filters?: string;
     page?: string;
     pageSize?: string;
@@ -47,7 +47,7 @@ export async function getEvents(
   const {
     startDate,
     endDate,
-    timezone,
+    timeZone,
     filters,
     page = "1",
     pageSize = "20",
@@ -66,7 +66,7 @@ export async function getEvents(
   // Get time and filter statements if parameters are provided
   const timeStatement =
     startDate || endDate
-      ? getTimeStatement({ date: { startDate, endDate, timezone } })
+      ? getTimeStatement({ date: { startDate, endDate, timeZone } })
       : "AND timestamp > now() - INTERVAL 30 MINUTE"; // Default to last 30 minutes if no time range specified
 
   const filterStatement = filters ? getFilterStatement(filters) : "";
