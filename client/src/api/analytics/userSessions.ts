@@ -1,12 +1,12 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { BACKEND_URL } from "../../lib/const";
+import { timeZone } from "../../lib/dateTimeUtils";
 import {
   getFilteredFilters,
   SESSION_PAGE_FILTERS,
   useStore,
 } from "../../lib/store";
 import { APIResponse } from "../types";
-import { authedFetch, getStartAndEndDate } from "../utils";
+import { authedFetch, getQueryParams } from "../utils";
 
 export type UserSessionsResponse = {
   session_id: string;
@@ -28,18 +28,18 @@ export type UserSessionsResponse = {
 
 export function useGetUserSessions(userId: string) {
   const { time, site, filters } = useStore();
-  const { startDate, endDate } = getStartAndEndDate(time);
+  const timeParams = getQueryParams(time);
 
   return useQuery({
     queryKey: ["user-sessions", userId, time, site, filters],
     queryFn: () => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      return authedFetch(`${BACKEND_URL}/user/${userId}/sessions/${site}`, {
-        startDate,
-        endDate,
-        timezone,
-        filters,
-      }).then((res) => res.json());
+      return authedFetch<UserSessionsResponse>(
+        `/user/${userId}/sessions/${site}`,
+        {
+          ...timeParams,
+          filters,
+        }
+      );
     },
     staleTime: Infinity,
   });
@@ -73,22 +73,40 @@ export type GetSessionsResponse = {
 
 export function useGetSessionsInfinite(userId?: string) {
   const { time, site, filters } = useStore();
-  const { startDate, endDate } = getStartAndEndDate(time);
+
+  // Get the appropriate time parameters using getQueryParams
+  const timeParams = getQueryParams(time);
 
   const filteredFilters = getFilteredFilters(SESSION_PAGE_FILTERS);
 
   return useInfiniteQuery<APIResponse<GetSessionsResponse>>({
     queryKey: ["sessions-infinite", time, site, filteredFilters, userId],
     queryFn: ({ pageParam = 1 }) => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      return authedFetch(`${BACKEND_URL}/sessions/${site}`, {
-        startDate: userId ? undefined : startDate,
-        endDate: userId ? undefined : endDate,
-        timezone,
+      // Use an object for request parameters so we can conditionally add fields
+      const requestParams: Record<string, any> = {
+        timeZone,
         filters: filteredFilters,
         page: pageParam,
-        userId,
-      }).then((res) => res.json());
+      };
+
+      // Add userId if provided
+      if (userId) {
+        requestParams.userId = userId;
+      }
+
+      // Add time parameters
+      if (time.mode === "past-minutes") {
+        Object.assign(requestParams, timeParams);
+      } else if (!userId) {
+        // Only add date parameters if not filtering by userId
+        requestParams.startDate = timeParams.startDate;
+        requestParams.endDate = timeParams.endDate;
+      }
+
+      return authedFetch<APIResponse<GetSessionsResponse>>(
+        `/sessions/${site}`,
+        requestParams
+      );
     },
     initialPageParam: 1,
     getNextPageParam: (
@@ -126,7 +144,7 @@ export interface SessionDetails {
   exit_page: string;
 }
 
-export interface PageviewEvent {
+export interface SessionEvent {
   timestamp: string;
   pathname: string;
   hostname: string;
@@ -135,12 +153,12 @@ export interface PageviewEvent {
   referrer: string;
   type: string;
   event_name?: string;
-  properties?: string;
+  props?: string;
 }
 
 export interface SessionPageviewsAndEvents {
   session: SessionDetails;
-  pageviews: PageviewEvent[];
+  events: SessionEvent[];
   pagination: {
     total: number;
     limit: number;
@@ -150,17 +168,37 @@ export interface SessionPageviewsAndEvents {
 }
 
 export function useGetSessionDetailsInfinite(sessionId: string | null) {
-  const { site } = useStore();
+  const { site, time } = useStore();
+  const pastMinutesMode = time.mode === "past-minutes";
+
+  // Get minutes based on the time mode
+  let minutes: number | undefined;
+  if (pastMinutesMode) {
+    if (time.mode === "past-minutes") {
+      minutes = time.pastMinutesStart; // Use the dynamic value
+    }
+  }
 
   return useInfiniteQuery<APIResponse<SessionPageviewsAndEvents>>({
-    queryKey: ["session-details-infinite", sessionId, site],
+    queryKey: ["session-details-infinite", sessionId, site, minutes],
     queryFn: ({ pageParam = 0 }) => {
       if (!sessionId) throw new Error("Session ID is required");
       const limit = 100;
 
-      return authedFetch(
-        `${BACKEND_URL}/session/${sessionId}/${site}?limit=${limit}&offset=${pageParam}`
-      ).then((res) => res.json());
+      // Build query parameters object
+      const queryParams: Record<string, any> = {
+        limit,
+        offset: pageParam,
+      };
+
+      if (pastMinutesMode && minutes) {
+        queryParams.minutes = minutes;
+      }
+
+      return authedFetch<APIResponse<SessionPageviewsAndEvents>>(
+        `/session/${sessionId}/${site}`,
+        queryParams
+      );
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
@@ -185,11 +223,13 @@ export function useGetUserSessionCount(userId: string) {
   return useQuery<APIResponse<UserSessionCountResponse[]>>({
     queryKey: ["user-session-count", userId, site],
     queryFn: () => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      return authedFetch(`${BACKEND_URL}/user/session-count/${site}`, {
-        userId,
-        timezone,
-      }).then((res) => res.json());
+      return authedFetch<APIResponse<UserSessionCountResponse[]>>(
+        `/user/session-count/${site}`,
+        {
+          userId,
+          timeZone,
+        }
+      );
     },
     staleTime: Infinity,
   });

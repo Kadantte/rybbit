@@ -3,24 +3,23 @@ import fastifyStatic from "@fastify/static";
 import { toNodeHandler } from "better-auth/node";
 import Fastify from "fastify";
 import { dirname, join } from "path";
-import { Headers, HeadersInit } from "undici";
 import { fileURLToPath } from "url";
-import { createFunnel } from "./api/analytics/createFunnel.js";
-import { createGoal } from "./api/analytics/createGoal.js";
-import { deleteGoal } from "./api/analytics/deleteGoal.js";
-import { deleteFunnel } from "./api/analytics/deleteFunnel.js";
-import { getEventNames } from "./api/analytics/getEventNames.js";
-import { getEventProperties } from "./api/analytics/getEventProperties.js";
-import { getEvents } from "./api/analytics/getEvents.js";
-import { getFunnel } from "./api/analytics/getFunnel.js";
-import { getFunnels } from "./api/analytics/getFunnels.js";
-import { getGoal } from "./api/analytics/getGoal.js";
-import { getGoals } from "./api/analytics/getGoals.js";
+import { getAdminOrganizations } from "./api/admin/getAdminOrganizations.js";
+import { getAdminSites } from "./api/admin/getAdminSites.js";
+import { getEventNames } from "./api/analytics/events/getEventNames.js";
+import { getEventProperties } from "./api/analytics/events/getEventProperties.js";
+import { getEvents } from "./api/analytics/events/getEvents.js";
+import { createFunnel } from "./api/analytics/funnels/createFunnel.js";
+import { deleteFunnel } from "./api/analytics/funnels/deleteFunnel.js";
+import { getFunnel } from "./api/analytics/funnels/getFunnel.js";
+import { getFunnels } from "./api/analytics/funnels/getFunnels.js";
 import { getJourneys } from "./api/analytics/getJourneys.js";
 import { getLiveSessionLocations } from "./api/analytics/getLiveSessionLocations.js";
 import { getLiveUsercount } from "./api/analytics/getLiveUsercount.js";
+import { getOrgEventCount } from "./api/analytics/getOrgEventCount.js";
 import { getOverview } from "./api/analytics/getOverview.js";
 import { getOverviewBucketed } from "./api/analytics/getOverviewBucketed.js";
+import { getPageTitles } from "./api/analytics/getPageTitles.js";
 import { getRetention } from "./api/analytics/getRetention.js";
 import { getSession } from "./api/analytics/getSession.js";
 import { getSessions } from "./api/analytics/getSessions.js";
@@ -29,8 +28,16 @@ import { getUserInfo } from "./api/analytics/getUserInfo.js";
 import { getUserSessionCount } from "./api/analytics/getUserSessionCount.js";
 import { getUserSessions } from "./api/analytics/getUserSessions.js";
 import { getUsers } from "./api/analytics/getUsers.js";
-import { updateGoal } from "./api/analytics/updateGoal.js";
+import { createGoal } from "./api/analytics/goals/createGoal.js";
+import { deleteGoal } from "./api/analytics/goals/deleteGoal.js";
+import { getGoals } from "./api/analytics/goals/getGoals.js";
+import { updateGoal } from "./api/analytics/goals/updateGoal.js";
+import { getPerformanceByDimension } from "./api/analytics/performance/getPerformanceByDimension.js";
+import { getPerformanceOverview } from "./api/analytics/performance/getPerformanceOverview.js";
+import { getPerformanceTimeSeries } from "./api/analytics/performance/getPerformanceTimeSeries.js";
+import { getConfig } from "./api/getConfig.js";
 import { addSite } from "./api/sites/addSite.js";
+import { changeSiteBlockBots } from "./api/sites/changeSiteBlockBots.js";
 import { changeSiteDomain } from "./api/sites/changeSiteDomain.js";
 import { changeSitePublic } from "./api/sites/changeSitePublic.js";
 import { changeSiteSalt } from "./api/sites/changeSiteSalt.js";
@@ -38,26 +45,22 @@ import { deleteSite } from "./api/sites/deleteSite.js";
 import { getSite } from "./api/sites/getSite.js";
 import { getSiteHasData } from "./api/sites/getSiteHasData.js";
 import { getSiteIsPublic } from "./api/sites/getSiteIsPublic.js";
-import { getSites } from "./api/sites/getSites.js";
-import { createAccount } from "./api/user/createAccount.js";
+import { getSitesFromOrg } from "./api/sites/getSitesFromOrg.js";
+import { createCheckoutSession } from "./api/stripe/createCheckoutSession.js";
+import { createPortalSession } from "./api/stripe/createPortalSession.js";
+import { getSubscription } from "./api/stripe/getSubscription.js";
+import { handleWebhook } from "./api/stripe/webhook.js";
 import { getUserOrganizations } from "./api/user/getUserOrganizations.js";
 import { listOrganizationMembers } from "./api/user/listOrganizationMembers.js";
 import { initializeCronJobs } from "./cron/index.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { allowList, loadAllowedDomains } from "./lib/allowedDomains.js";
-import { mapHeaders } from "./lib/auth-utils.js";
+import { getSessionFromReq, mapHeaders } from "./lib/auth-utils.js";
 import { auth } from "./lib/auth.js";
+import { IS_CLOUD } from "./lib/const.js";
 import { siteConfig } from "./lib/siteConfig.js";
 import { trackEvent } from "./tracker/trackEvent.js";
 import { extractSiteId, isSitePublic, normalizeOrigin } from "./utils.js";
-
-// Import Stripe handlers
-import { createCheckoutSession } from "./api/stripe/createCheckoutSession.js";
-import { createPortalSession } from "./api/stripe/createPortalSession.js";
-import { getSubscription } from "./api/stripe/getSubscription.js";
-import { handleWebhook } from "./api/stripe/webhook.js";
-import { IS_CLOUD } from "./lib/const.js";
-import { addUserToOrganization } from "./api/user/addUserToOrganization.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -80,6 +83,8 @@ server.register(cors, {
       callback(new Error("Not allowed by CORS"), false);
     }
   },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   credentials: true,
 });
 
@@ -116,62 +121,63 @@ server.register(
 );
 
 const PUBLIC_ROUTES: string[] = [
-  "/health",
-  "/track",
-  "/script",
-  "/auth",
+  "/api/health",
+  "/api/track",
+  "/api/script.js", // Updated script route
+  "/api/config",
   "/api/auth",
   "/api/auth/callback/google",
   "/api/auth/callback/github",
-  "/api/stripe/webhook", // Add webhook to public routes
+  "/api/stripe/webhook",
 ];
 
 // Define analytics routes that can be public
 const ANALYTICS_ROUTES = [
-  "/live-user-count/",
-  "/overview/",
-  "/overview-bucketed/",
-  "/single-col/",
-  "/retention/",
-  "/site-has-data/",
-  "/site-is-public/",
-  "/sessions/",
-  "/session/",
-  "/recent-events/",
-  "/users/",
-  "/user/info/",
-  "/user/session-count/",
-  "/live-session-locations/",
-  "/funnels/",
-  "/funnel/",
-  "/journeys/",
-  "/goals/",
-  "/goal/",
+  "/api/live-user-count/",
+  "/api/overview/",
+  "/api/overview-bucketed/",
+  "/api/single-col/",
+  "/api/page-titles/",
+  "/api/retention/",
+  "/api/site-has-data/",
+  "/api/site-is-public/",
+  "/api/sessions/",
+  "/api/session/",
+  "/api/recent-events/",
+  "/api/users/",
+  "/api/user/info/",
+  "/api/user/session-count/",
+  "/api/live-session-locations/",
+  "/api/funnels/",
+  "/api/funnel/",
+  "/api/journeys/",
+  "/api/goals/",
+  "/api/goal/",
   "/api/analytics/events/names/",
   "/api/analytics/events/properties/",
-  "/events/",
-
-  "/get-site",
+  "/api/events/",
+  "/api/get-site",
+  "/api/performance/overview/",
+  "/api/performance/time-series/",
+  "/api/performance/by-path/",
+  "/api/performance/by-dimension/",
 ];
-
-// Check if a route is an analytics route
-const isAnalyticsRoute = (path: string) => {
-  return ANALYTICS_ROUTES.some((route) => path.startsWith(route));
-};
 
 server.addHook("onRequest", async (request, reply) => {
   const { url } = request.raw;
 
   if (!url) return;
 
-  // Bypass auth for health check and tracking
-  if (PUBLIC_ROUTES.some((route) => url.includes(route))) {
+  let processedUrl = url;
+
+  // Bypass auth for public routes (now including the prepended /api)
+  if (PUBLIC_ROUTES.some((route) => processedUrl.includes(route))) {
     return;
   }
 
-  // Check if it's an analytics route and get site ID
-  if (isAnalyticsRoute(url)) {
-    const siteId = extractSiteId(url);
+  // Check if it's an analytics route and get site ID (now including the prepended /api)
+  if (ANALYTICS_ROUTES.some((route) => processedUrl.startsWith(route))) {
+    const siteId = extractSiteId(processedUrl);
 
     if (siteId && (await isSitePublic(siteId))) {
       // Skip auth check for public sites
@@ -180,11 +186,7 @@ server.addHook("onRequest", async (request, reply) => {
   }
 
   try {
-    // Convert Fastify headers object into Fetch-compatible Headers
-    const headers = new Headers(request.headers as HeadersInit);
-
-    // Get session from BetterAuth
-    const session = await auth!.api.getSession({ headers });
+    const session = await getSessionFromReq(request);
 
     if (!session) {
       return reply.status(401).send({ error: "Unauthorized" });
@@ -198,65 +200,89 @@ server.addHook("onRequest", async (request, reply) => {
   }
 });
 
+// Add this with your other routes, around line 273
+server.get("/api/script.js", async (request, reply) => {
+  return reply.sendFile("script.js");
+});
+
 // Analytics
-server.get("/live-user-count/:site", getLiveUsercount);
-server.get("/overview/:site", getOverview);
-server.get("/overview-bucketed/:site", getOverviewBucketed);
-server.get("/single-col/:site", getSingleCol);
-server.get("/retention/:site", getRetention);
-server.get("/site-has-data/:site", getSiteHasData);
-server.get("/site-is-public/:site", getSiteIsPublic);
-server.get("/sessions/:site", getSessions);
-server.get("/session/:sessionId/:site", getSession);
-server.get("/recent-events/:site", getEvents); // Legacy endpoint for backward compatibility
-server.get("/events/:site", getEvents); // New endpoint with filtering and pagination
-server.get("/users/:site", getUsers);
-server.get("/user/:userId/sessions/:site", getUserSessions);
-server.get("/user/session-count/:site", getUserSessionCount);
-server.get("/user/info/:userId/:site", getUserInfo);
-server.get("/live-session-locations/:site", getLiveSessionLocations);
-server.get("/funnels/:site", getFunnels);
-server.get("/journeys/:site", getJourneys);
-server.post("/funnel/:site", getFunnel);
-server.post("/funnel/create/:site", createFunnel);
-server.delete("/funnel/:funnelId", deleteFunnel);
-server.get("/goals/:site", getGoals);
-server.get("/goal/:goalId/:site", getGoal);
-server.post("/goal/create", createGoal);
-server.delete("/goal/:goalId", deleteGoal);
-server.put("/goal/update", updateGoal);
-server.get("/events/names/:site", getEventNames);
-server.get("/events/properties/:site", getEventProperties);
+
+// This endpoint gets called a lot so we don't want to log it
+server.get(
+  "/api/live-user-count/:site",
+  { logLevel: "silent" },
+  getLiveUsercount
+);
+server.get("/api/overview/:site", getOverview);
+server.get("/api/overview-bucketed/:site", getOverviewBucketed);
+server.get("/api/single-col/:site", getSingleCol);
+server.get("/api/page-titles/:site", getPageTitles);
+server.get("/api/retention/:site", getRetention);
+server.get("/api/site-has-data/:site", getSiteHasData);
+server.get("/api/site-is-public/:site", getSiteIsPublic);
+server.get("/api/sessions/:site", getSessions);
+server.get("/api/session/:sessionId/:site", getSession);
+server.get("/api/recent-events/:site", getEvents); // Legacy endpoint for backward compatibility
+server.get("/api/events/:site", getEvents); // New endpoint with filtering and pagination
+server.get("/api/users/:site", getUsers);
+server.get("/api/user/:userId/sessions/:site", getUserSessions);
+server.get("/api/user/session-count/:site", getUserSessionCount);
+server.get("/api/user/info/:userId/:site", getUserInfo);
+server.get("/api/live-session-locations/:site", getLiveSessionLocations);
+server.get("/api/funnels/:site", getFunnels);
+server.get("/api/journeys/:site", getJourneys);
+server.post("/api/funnel/:site", getFunnel);
+server.post("/api/funnel/create/:site", createFunnel);
+server.delete("/api/funnel/:funnelId", deleteFunnel);
+server.get("/api/goals/:site", getGoals);
+server.post("/api/goal/create", createGoal);
+server.delete("/api/goal/:goalId", deleteGoal);
+server.put("/api/goal/update", updateGoal);
+server.get("/api/events/names/:site", getEventNames);
+server.get("/api/events/properties/:site", getEventProperties);
+server.get("/api/org-event-count/:organizationId", getOrgEventCount);
+
+// Performance Analytics
+server.get("/api/performance/overview/:site", getPerformanceOverview);
+server.get("/api/performance/time-series/:site", getPerformanceTimeSeries);
+server.get("/api/performance/by-dimension/:site", getPerformanceByDimension);
 
 // Administrative
-server.post("/add-site", addSite);
-server.post("/change-site-domain", changeSiteDomain);
-server.post("/change-site-public", changeSitePublic);
-server.post("/change-site-salt", changeSiteSalt);
-server.post("/delete-site/:id", deleteSite);
-server.get("/get-sites", getSites);
-server.get("/get-site/:id", getSite);
-server.post("/create-account", createAccount);
+server.get("/api/config", getConfig);
+server.post("/api/add-site", addSite);
+server.post("/api/change-site-domain", changeSiteDomain);
+server.post("/api/change-site-public", changeSitePublic);
+server.post("/api/change-site-salt", changeSiteSalt);
+server.post("/api/change-site-block-bots", changeSiteBlockBots);
+server.post("/api/delete-site/:id", deleteSite);
+server.get("/api/get-sites-from-org/:organizationId", getSitesFromOrg);
+server.get("/api/get-site/:id", getSite);
 server.get(
-  "/list-organization-members/:organizationId",
+  "/api/list-organization-members/:organizationId",
   listOrganizationMembers
 );
-server.get("/user/organizations", getUserOrganizations);
-server.post("/add-user-to-organization", addUserToOrganization);
+server.get("/api/user/organizations", getUserOrganizations);
 
 if (IS_CLOUD) {
   // Stripe Routes
-  server.post("/stripe/create-checkout-session", createCheckoutSession);
-  server.post("/stripe/create-portal-session", createPortalSession);
-  server.get("/stripe/subscription", getSubscription);
+  server.post("/api/stripe/create-checkout-session", createCheckoutSession);
+  server.post("/api/stripe/create-portal-session", createPortalSession);
+  server.get("/api/stripe/subscription", getSubscription);
   server.post(
     "/api/stripe/webhook",
     { config: { rawBody: true } },
     handleWebhook
   ); // Use rawBody parser config for webhook
+
+  // Admin Routes
+  server.get("/api/admin/sites", getAdminSites);
+  server.get("/api/admin/organizations", getAdminOrganizations);
 }
 
-server.post("/track", trackEvent);
+server.post("/api/track", trackEvent);
+server.get("/api/health", { logLevel: "silent" }, (_, reply) =>
+  reply.send("OK")
+);
 
 const start = async () => {
   try {

@@ -17,6 +17,15 @@ import { Button } from "../../../../../components/ui/button";
 
 type Tab = "countries" | "regions" | "languages" | "cities" | "map";
 
+function getCountryCity(value: string) {
+  if (value.split("-").length === 2) {
+    const [country, city] = value.split("-");
+    return { country, region: "", city };
+  }
+  const [country, region, city] = value.split("-");
+  return { country, region, city };
+}
+
 // Helper to extract country code from language code
 const getCountryFromLanguage = (languageCode: string): string | null => {
   if (languageCode.includes("-")) {
@@ -98,14 +107,14 @@ export function Countries() {
                   (feature) => feature.properties.iso_3166_2 === e.value
                 )?.properties;
 
+                const countryCode = e.value.split("-")[0];
+
                 return (
                   <div className="flex gap-2 items-center">
-                    <CountryFlag
-                      country={region?.iso_3166_2.slice(0, 2) ?? ""}
-                    />
-                    {region?.iso_3166_2.slice(0, 2)}
+                    <CountryFlag country={countryCode} />
+                    {countryCode}
                     <ChevronRight className="w-4 h-4 mx-[-4px]" />
-                    {region?.name}
+                    {region?.name ?? e.value.slice(3)}
                   </div>
                 );
               }}
@@ -120,10 +129,29 @@ export function Countries() {
               getValue={(e) => e.value}
               getKey={(e) => e.value}
               getLabel={(e) => {
-                if (!e.value) {
+                if (!e.value || e.value === "-") {
                   return "Unknown";
                 }
-                return <div className="flex gap-2 items-center">{e.value}</div>;
+
+                const { country, region, city } = getCountryCity(e.value) ?? {};
+
+                const region_ = subdivisions?.features.find(
+                  (feature) =>
+                    feature.properties.iso_3166_2 === `${country}-${region}`
+                )?.properties;
+
+                return (
+                  <div className="flex gap-2 items-center">
+                    <CountryFlag country={country} />
+                    {country}
+                    {region_?.name && (
+                      <ChevronRight className="w-4 h-4 mx-[-4px]" />
+                    )}
+                    {region_?.name}
+                    {city && <ChevronRight className="w-4 h-4 mx-[-4px]" />}
+                    {city}
+                  </div>
+                );
               }}
               expanded={expanded}
               close={close}

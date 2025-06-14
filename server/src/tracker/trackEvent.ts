@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z, ZodError } from "zod";
+import { isbot } from "isbot";
 import {
   clearSelfReferrer,
   createBasePayload,
@@ -10,7 +11,7 @@ import {
 import { db } from "../db/postgres/postgres.js";
 import { activeSessions } from "../db/postgres/schema.js";
 import { eq } from "drizzle-orm";
-import { getDeviceType } from "../utils.js";
+import { getDeviceType, normalizeOrigin } from "../utils.js";
 import { pageviewQueue } from "./pageviewQueue.js";
 import { siteConfig } from "../lib/siteConfig.js";
 import { DISABLE_ORIGIN_CHECK } from "./const.js";
@@ -30,6 +31,7 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
     referrer: z.string().max(2048).optional(),
     event_name: z.string().max(256).optional(),
     properties: z.string().max(2048).optional(),
+    user_id: z.string().max(255).optional(),
   }),
   z.object({
     type: z.literal("custom_event"),
@@ -58,11 +60,33 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
         { message: "Properties must be a valid JSON string" }
       )
       .optional(), // Optional but must be valid JSON if present
+    user_id: z.string().max(255).optional(),
+  }),
+  z.object({
+    type: z.literal("performance"),
+    site_id: z.string().min(1),
+    hostname: z.string().max(253).optional(),
+    pathname: z.string().max(2048).optional(),
+    querystring: z.string().max(2048).optional(),
+    screenWidth: z.number().int().positive().optional(),
+    screenHeight: z.number().int().positive().optional(),
+    language: z.string().max(35).optional(),
+    page_title: z.string().max(512).optional(),
+    referrer: z.string().max(2048).optional(),
+    event_name: z.string().max(256).optional(),
+    properties: z.string().max(2048).optional(),
+    user_id: z.string().max(255).optional(),
+    // Performance metrics (can be null if not collected)
+    lcp: z.number().positive().nullable().optional(),
+    cls: z.number().min(0).nullable().optional(),
+    inp: z.number().positive().nullable().optional(),
+    fcp: z.number().positive().nullable().optional(),
+    ttfb: z.number().positive().nullable().optional(),
   }),
 ]);
 
 // Update session for both pageviews and events
-export async function updateSession(
+async function updateSession(
   payload: TotalTrackingPayload,
   existingSession: any | null,
   isPageview: boolean = true
@@ -117,7 +141,7 @@ export async function updateSession(
 }
 
 // Process tracking event and add to queue
-export async function processTrackingEvent(
+async function processTrackingEvent(
   payload: TotalTrackingPayload,
   existingSession: any | null,
   isPageview: boolean = true
@@ -181,15 +205,15 @@ async function validateOrigin(siteId: string, requestOrigin?: string) {
       // Parse the origin into URL components
       const originUrl = new URL(requestOrigin);
 
-      // Normalize domains by removing 'www.' prefix if present
-      const normalizedOriginHost = originUrl.hostname.replace(/^www\./, "");
-      const normalizedSiteDomain = siteDomain.replace(/^www\./, "");
+      // Normalize domains by removing all subdomain prefixes
+      const normalizedOriginHost = normalizeOrigin(requestOrigin);
+      const normalizedSiteDomain = normalizeOrigin(`https://${siteDomain}`);
 
       // Check if the normalized domains match
       if (normalizedOriginHost !== normalizedSiteDomain) {
         return {
           success: false,
-          error: `Origin mismatch. Expected: ${siteDomain}, Received: ${requestOrigin}`,
+          error: `Origin mismatch. Received: ${requestOrigin}`,
         };
       }
 
@@ -240,6 +264,23 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
         success: false,
         error: originValidation.error,
       });
+    }
+
+    // Make sure the site config is loaded
+    await siteConfig.ensureInitialized();
+
+    // Check if bot blocking is enabled for this site and if the request is from a bot
+    if (siteConfig.shouldBlockBots(validatedPayload.site_id)) {
+      const userAgent = request.headers["user-agent"] as string;
+      if (userAgent && isbot(userAgent)) {
+        console.log(
+          `[Tracking] Bot request filtered for site ${validatedPayload.site_id} from User-Agent: ${userAgent}`
+        );
+        return reply.status(200).send({
+          success: true,
+          message: "Event not tracked - bot detected",
+        });
+      }
     }
 
     // Check if the site has exceeded its monthly limit

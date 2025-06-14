@@ -14,10 +14,6 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Monitor,
   Smartphone,
   Tablet,
@@ -28,6 +24,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useGetUsers, UsersResponse } from "../../../api/analytics/users";
 import { Button } from "../../../components/ui/button";
+import { Pagination } from "../../../components/pagination";
 import {
   Tooltip,
   TooltipContent,
@@ -41,6 +38,7 @@ import { Browser } from "../components/shared/icons/Browser";
 import { CountryFlag } from "../components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../components/shared/icons/OperatingSystem";
 import { SubHeader } from "../components/SubHeader/SubHeader";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 
 // Set up column helper
 const columnHelper = createColumnHelper<UsersResponse>();
@@ -115,25 +113,42 @@ export default function UsersPage() {
     columnHelper.accessor("user_id", {
       header: "User ID",
       cell: (info) => (
-        <div className="] truncate flex items-center gap-2 text-neutral-250">
-          <Avatar
-            size={20}
-            name={info.getValue() as string}
-            variant="marble"
-            colors={["#92A1C6", "#146A7C", "#F0AB3D", "#C271B4", "#C20D90"]}
-          />
-          {info.getValue().slice(0, 6)}
-        </div>
+        <Link href={`/${site}/user/${info.getValue()}`}>
+          <div className=" truncate flex items-center gap-2 text-neutral-250 hover:text-neutral-100 hover:underline">
+            <Avatar
+              size={20}
+              name={info.getValue() as string}
+              variant="marble"
+              colors={["#92A1C6", "#146A7C", "#F0AB3D", "#C271B4", "#C20D90"]}
+            />
+            {info.getValue().slice(0, 6)}
+          </div>
+        </Link>
       ),
     }),
     columnHelper.accessor("country", {
       header: "Country",
-      cell: (info) => (
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <CountryFlag country={info.getValue() || ""} />
-          {info.getValue() ? getCountryName(info.getValue()) : "Unknown"}
-        </div>
-      ),
+      cell: (info) => {
+        return (
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <CountryFlag country={info.getValue() || ""} />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {info.getValue()
+                    ? getCountryName(info.getValue())
+                    : "Unknown"}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            {info.row.original.city ||
+              info.row.original.region ||
+              getCountryName(info.getValue())}
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("browser", {
       header: "Browser",
@@ -145,7 +160,7 @@ export default function UsersPage() {
       ),
     }),
     columnHelper.accessor("operating_system", {
-      header: "Operating System",
+      header: "OS",
       cell: (info) => (
         <div className="flex items-center gap-2 whitespace-nowrap">
           <OperatingSystem os={info.getValue() || ""} />
@@ -154,7 +169,7 @@ export default function UsersPage() {
       ),
     }),
     columnHelper.accessor("device_type", {
-      header: "Device Type",
+      header: "Device",
       cell: (info) => {
         const deviceType = info.getValue();
         return (
@@ -162,7 +177,6 @@ export default function UsersPage() {
             {deviceType === "Desktop" && <Monitor className="w-4 h-4" />}
             {deviceType === "Mobile" && <Smartphone className="w-4 h-4" />}
             {deviceType === "Tablet" && <Tablet className="w-4 h-4" />}
-            {deviceType || "Unknown"}
           </div>
         );
       },
@@ -206,16 +220,14 @@ export default function UsersPage() {
 
         return (
           <div className="whitespace-nowrap">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>{relativeTime}</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{formattedDate}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>{relativeTime}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{formattedDate}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         );
       },
@@ -233,16 +245,14 @@ export default function UsersPage() {
 
         return (
           <div className="whitespace-nowrap">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>{relativeTime}</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{formattedDate}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>{relativeTime}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{formattedDate}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         );
       },
@@ -279,177 +289,110 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
-      <SubHeader availableFilters={USER_PAGE_FILTERS} />
-      <div className="rounded-md border border-neutral-800 bg-neutral-900">
-        <div className="relative overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-neutral-850 text-neutral-400 ">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      scope="col"
-                      className="px-3 py-1 font-medium whitespace-nowrap"
-                      style={{
-                        minWidth: header.id === "user_id" ? "100px" : "auto",
-                      }}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 15 }).map((_, index) => (
-                  <tr
-                    key={index}
-                    className="border-b border-neutral-800 animate-pulse"
-                  >
-                    {Array.from({ length: columns.length }).map(
-                      (_, cellIndex) => (
-                        <td key={cellIndex} className="px-3 py-3">
-                          <div className="h-4 bg-neutral-800 rounded"></div>
-                        </td>
-                      )
-                    )}
-                  </tr>
-                ))
-              ) : table.getRowModel().rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-3 py-8 text-center text-neutral-400"
-                  >
-                    No users found
-                  </td>
-                </tr>
-              ) : (
-                table.getRowModel().rows.map((row) => {
-                  const userId = row.original.user_id;
-                  const href = `/${site}/user/${userId}`;
-
-                  return (
-                    <tr
-                      key={row.id}
-                      className="border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer group"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-3 py-3 relative">
-                          <Link
-                            href={href}
-                            className="absolute inset-0 z-10"
-                            aria-label={`View user ${userId}`}
-                          >
-                            <span className="sr-only">View user details</span>
-                          </Link>
-                          <span className="relative z-0">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
+    <DisabledOverlay>
+      <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
+        <SubHeader availableFilters={USER_PAGE_FILTERS} />
+        <div className="rounded-md border border-neutral-800 bg-neutral-900">
+          <div className="relative overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-neutral-850 text-neutral-400 ">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        scope="col"
+                        className="px-3 py-1 font-medium whitespace-nowrap"
+                        style={{
+                          minWidth: header.id === "user_id" ? "100px" : "auto",
+                        }}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
                             )}
-                          </span>
-                        </td>
-                      ))}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  Array.from({ length: 15 }).map((_, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-neutral-800 animate-pulse"
+                    >
+                      {Array.from({ length: columns.length }).map(
+                        (_, cellIndex) => (
+                          <td key={cellIndex} className="px-3 py-3">
+                            <div className="h-4 bg-neutral-800 rounded"></div>
+                          </td>
+                        )
+                      )}
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ))
+                ) : table.getRowModel().rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={columns.length}
+                      className="px-3 py-8 text-center text-neutral-400"
+                    >
+                      No users found
+                    </td>
+                  </tr>
+                ) : (
+                  table.getRowModel().rows.map((row) => {
+                    const userId = row.original.user_id;
+                    const href = `/${site}/user/${userId}`;
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800">
-          <div className="text-sm text-neutral-400">
-            {isLoading ? (
-              <span>Loading users...</span>
-            ) : (
-              <>
-                Showing{" "}
-                <span className="font-semibold">
-                  {data?.data?.length
-                    ? table.getState().pagination.pageIndex *
-                        pagination.pageSize +
-                      1
-                    : 0}
-                </span>{" "}
-                to{" "}
-                <span className="font-semibold">
-                  {data?.data?.length
-                    ? Math.min(
-                        (table.getState().pagination.pageIndex + 1) *
-                          pagination.pageSize,
-                        data?.totalCount || 0
-                      )
-                    : 0}
-                </span>{" "}
-                of{" "}
-                <span className="font-semibold">{data?.totalCount || 0}</span>{" "}
-                users
-              </>
-            )}
+                    return (
+                      <tr
+                        key={row.id}
+                        className="border-b border-neutral-800  group"
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id} className="px-3 py-3 relative">
+                            {/* <Link
+                              href={href}
+                              className="absolute inset-0 z-10"
+                              aria-label={`View user ${userId}`}
+                            >
+                              <span className="sr-only">View user details</span>
+                            </Link> */}
+                            <span className="relative z-0">
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </span>
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage() || isLoading}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage() || isLoading}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-sm text-neutral-400">
-              {isLoading ? (
-                <span>Loading...</span>
-              ) : (
-                <>
-                  Page{" "}
-                  <span className="font-semibold">
-                    {table.getState().pagination.pageIndex + 1}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-semibold">
-                    {Math.max(table.getPageCount(), 1)}
-                  </span>
-                </>
-              )}
+
+          {/* Pagination */}
+          <div className="border-t border-neutral-800">
+            <div className="px-4 py-3">
+              <Pagination
+                table={table}
+                data={{ items: data?.data || [], total: data?.totalCount || 0 }}
+                pagination={pagination}
+                setPagination={setPagination}
+                isLoading={isLoading}
+                itemName="users"
+              />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage() || isLoading}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage() || isLoading}
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </div>
-    </div>
+    </DisabledOverlay>
   );
 }

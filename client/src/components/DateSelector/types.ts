@@ -34,10 +34,17 @@ export type AllTimeMode = {
   mode: "all-time";
 };
 
+export type PastMinutesMode = {
+  mode: "past-minutes";
+  pastMinutesStart: number;
+  pastMinutesEnd: number;
+};
+
 export type Time =
   | DateMode
   | DateRangeMode
   | WeekMode
   | MonthMode
   | YearMode
-  | AllTimeMode;
+  | AllTimeMode
+  | PastMinutesMode;

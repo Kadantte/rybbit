@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import {
   getFilterStatement,
   getTimeStatement,
@@ -44,7 +44,7 @@ export interface GetUserSessionsRequest {
   Querystring: {
     startDate: string;
     endDate: string;
-    timezone: string;
+    timeZone: string;
     site: string;
     filters: string;
   };
@@ -57,7 +57,7 @@ export async function getUserSessions(
   req: FastifyRequest<GetUserSessionsRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, site, filters } = req.query;
+  const { startDate, endDate, timeZone, site, filters } = req.query;
   const userId = req.params.userId;
 
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
@@ -66,9 +66,7 @@ export async function getUserSessions(
   }
 
   const filterStatement = getFilterStatement(filters);
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
-  });
+  const timeStatement = getTimeStatement(req.query);
 
   const query = `
 SELECT

@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import {
   getFilterStatement,
   getTimeStatement,
@@ -7,6 +7,7 @@ import {
 } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { FilterParameter } from "./types.js";
+import { FilterParams } from "@rybbit/shared";
 
 type GetOverviewResponse = {
   sessions: number;
@@ -17,24 +18,10 @@ type GetOverviewResponse = {
   session_duration: number;
 };
 
-const getQuery = ({
-  startDate,
-  endDate,
-  timezone,
-  site,
-  filters,
-  pastMinutes,
-}: {
-  startDate: string;
-  endDate: string;
-  timezone: string;
-  site: string;
-  filters: string;
-  pastMinutes: number;
-}) => {
-  const filterStatement = getFilterStatement(filters);
+const getQuery = (params: FilterParams) => {
+  const filterStatement = getFilterStatement(params.filters);
 
-  return `SELECT   
+  return `SELECT
       session_stats.sessions,
       session_stats.pages_per_session,
       session_stats.bounce_rate * 100 AS bounce_rate,
@@ -61,13 +48,7 @@ const getQuery = ({
                 WHERE
                     site_id = {siteId:Int32}
                     ${filterStatement}
-                    ${getTimeStatement(
-                      pastMinutes
-                        ? { pastMinutes }
-                        : {
-                            date: { startDate, endDate, timezone },
-                          }
-                    )}
+                    ${getTimeStatement(params)}
                 GROUP BY session_id
             )
         ) AS session_stats
@@ -81,37 +62,30 @@ const getQuery = ({
             WHERE 
                 site_id = {siteId:Int32}
                 ${filterStatement}
-                ${getTimeStatement(
-                  pastMinutes
-                    ? { pastMinutes }
-                    : {
-                        date: { startDate, endDate, timezone },
-                      }
-                )}
+                ${getTimeStatement(params)}
                 AND type = 'pageview'
         ) AS page_stats`;
 };
 
-export interface GenericRequest {
+export interface OverviewRequest {
   Params: {
     site: string;
   };
-  Querystring: {
-    startDate: string;
-    endDate: string;
-    timezone: string;
-    filters: string;
-    parameter: FilterParameter;
-    pastMinutes?: number;
-    limit?: number;
-  };
+  Querystring: FilterParams;
 }
 
 export async function getOverview(
-  req: FastifyRequest<GenericRequest>,
+  req: FastifyRequest<OverviewRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, filters, pastMinutes } = req.query;
+  const {
+    startDate,
+    endDate,
+    timeZone,
+    filters,
+    pastMinutesStart,
+    pastMinutesEnd,
+  } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -121,10 +95,10 @@ export async function getOverview(
   const query = getQuery({
     startDate,
     endDate,
-    timezone,
-    site,
+    timeZone,
     filters,
-    pastMinutes: Number(pastMinutes),
+    pastMinutesStart,
+    pastMinutesEnd,
   });
 
   try {

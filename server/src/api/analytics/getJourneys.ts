@@ -1,25 +1,31 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { DateTime } from "luxon";
 import { getTimeStatement } from "./utils.js";
+import { FilterParams } from "@rybbit/shared";
 
 export const getJourneys = async (
   request: FastifyRequest<{
     Params: { site: string };
-    Querystring: {
+    Querystring: FilterParams<{
       steps?: string;
-      startDate?: string;
-      endDate?: string;
-      timezone?: string;
-    };
+      limit?: string;
+    }>;
   }>,
   reply: FastifyReply
 ) => {
   try {
     const { site } = request.params;
-    const { steps = "3", startDate, endDate, timezone = "UTC" } = request.query;
+    const {
+      steps = "3",
+      startDate,
+      endDate,
+      timeZone = "UTC",
+      limit = "100",
+    } = request.query;
 
     const maxSteps = parseInt(steps, 10);
+    const journeyLimit = parseInt(limit, 10);
 
     if (isNaN(maxSteps) || maxSteps < 2 || maxSteps > 10) {
       return reply.status(400).send({
@@ -27,19 +33,14 @@ export const getJourneys = async (
       });
     }
 
+    if (isNaN(journeyLimit) || journeyLimit < 1 || journeyLimit > 500) {
+      return reply.status(400).send({
+        error: "Limit parameter must be a number between 1 and 500",
+      });
+    }
+
     // Time conditions using getTimeStatement
-    const timeStatement = getTimeStatement({
-      date:
-        startDate || endDate
-          ? {
-              startDate:
-                startDate || DateTime.now().minus({ days: 30 }).toISODate(),
-              endDate: endDate || DateTime.now().toISODate(),
-              timezone,
-              table: "events",
-            }
-          : undefined,
-    });
+    const timeStatement = getTimeStatement(request.query);
 
     // Query to find sequences of events (journeys) for each user
     const result = await clickhouse.query({
@@ -71,7 +72,7 @@ export const getJourneys = async (
           FROM user_paths
           GROUP BY journey
           ORDER BY sessions_count DESC
-          LIMIT 100
+          LIMIT {journeyLimit:Int32}
         )
         
         SELECT
@@ -87,7 +88,8 @@ export const getJourneys = async (
       `,
       query_params: {
         siteId: parseInt(site, 10),
-        maxSteps: parseInt(steps, 10),
+        maxSteps: maxSteps,
+        journeyLimit: journeyLimit,
       },
     });
 

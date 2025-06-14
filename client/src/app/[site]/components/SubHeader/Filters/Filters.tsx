@@ -1,23 +1,23 @@
+import { FilterParameter, FilterType } from "@rybbit/shared";
 import { X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "../../../../../components/ui/tooltip";
 import { useGetRegionName } from "../../../../../lib/geo";
 import {
-  FilterParameter,
-  FilterType,
   removeFilter,
   updateFilter,
   useStore,
 } from "../../../../../lib/store";
+import { cn } from "../../../../../lib/utils";
 import {
   filterTypeToLabel,
   getParameterNameLabel,
   getParameterValueLabel,
 } from "../../shared/Filters/utils";
 import { NewFilterButton } from "./NewFilterButton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../../../../../components/ui/tooltip";
 
 export function Filters({
   availableFilters,
@@ -29,7 +29,7 @@ export function Filters({
 
   return (
     <div className="flex gap-2 flex-wrap">
-      <NewFilterButton />
+      <NewFilterButton availableFilters={availableFilters} />
       {filters.map((filter, i) => {
         const disabled =
           availableFilters && !availableFilters.includes(filter.parameter);
@@ -44,22 +44,25 @@ export function Filters({
             <TooltipTrigger>
               <div
                 key={filter.parameter}
-                className={`px-2 py-1 rounded-lg ${
+                className={cn(
+                  "px-2 py-1 rounded-lg text-neutral-400 flex items-center gap-1 text-sm",
                   disabled ? "bg-neutral-900" : "bg-neutral-850"
-                } text-neutral-400 flex items-center gap-1 text-sm`}
+                )}
               >
                 <div
-                  className={disabled ? "text-neutral-500" : "text-neutral-300"}
+                  className={cn(
+                    disabled ? "text-neutral-500" : "text-neutral-300"
+                  )}
                 >
                   {getParameterNameLabel(filter.parameter)}
                 </div>
                 <div
-                  className={`text-emerald-400 font-medium cursor-pointer whitespace-nowrap ${
-                    filter.type === "not_equals" ||
-                    filter.type === "not_contains"
-                      ? "text-red-400"
-                      : ""
-                  }`}
+                  className={cn(
+                    "text-emerald-400 font-medium cursor-pointer whitespace-nowrap",
+                    (filter.type === "not_equals" ||
+                      filter.type === "not_contains") &&
+                      "text-red-400"
+                  )}
                   onClick={() => {
                     let newType: FilterType = "equals";
                     if (filter.type === "equals") {
@@ -78,9 +81,10 @@ export function Filters({
                   {filterTypeToLabel(filter.type)}
                 </div>
                 <div
-                  className={`text-neutral-100 font-medium whitespace-nowrap ${
-                    disabled ? "text-neutral-500" : ""
-                  }`}
+                  className={cn(
+                    "text-neutral-100 font-medium whitespace-nowrap",
+                    disabled && "text-neutral-500"
+                  )}
                 >
                   {getParameterValueLabel(filter, getRegionName)}
                 </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useDeleteFunnel } from "@/api/analytics/useDeleteFunnel";
-import { useGetFunnel } from "@/api/analytics/useGetFunnel";
-import { SavedFunnel } from "@/api/analytics/useGetFunnels";
+import { useDeleteFunnel } from "../../../../api/analytics/funnels/useDeleteFunnel";
+import { useGetFunnel } from "../../../../api/analytics/funnels/useGetFunnel";
+import { SavedFunnel } from "../../../../api/analytics/funnels/useGetFunnels";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { DateRangeMode, Time } from "@/components/DateSelector/types";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { getStartAndEndDate } from "../../../../api/utils";
 import { ThreeDotLoader } from "../../../../components/Loaders";
 import { useGetRegionName } from "../../../../lib/geo";
+import { cn } from "../../../../lib/utils";
 import {
   filterTypeToLabel,
   getParameterNameLabel,
@@ -116,50 +117,48 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
                   {index > 0 && (
                     <ArrowRight className="h-3 w-3 mx-1 text-neutral-400" />
                   )}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default">
-                          {step.type === "page" ? (
-                            <FileText className="h-3 w-3 mr-1 text-blue-400" />
-                          ) : (
-                            <MousePointerClick className="h-3 w-3 mr-1 text-amber-400" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 whitespace-nowrap overflow-hidden text-ellipsis flex items-center cursor-default">
+                        {step.type === "page" ? (
+                          <FileText className="h-3 w-3 mr-1 text-blue-400" />
+                        ) : (
+                          <MousePointerClick className="h-3 w-3 mr-1 text-amber-400" />
+                        )}
+                        <span className="max-w-[120px] overflow-hidden text-ellipsis inline-block">
+                          {step.name || step.value}
+                          {step.type === "event" && step.eventPropertyKey && (
+                            <span className="text-xs text-yellow-400 ml-1">
+                              *
+                            </span>
                           )}
-                          <span className="max-w-[120px] overflow-hidden text-ellipsis inline-block">
-                            {step.name || step.value}
-                            {step.type === "event" && step.eventPropertyKey && (
-                              <span className="text-xs text-yellow-400 ml-1">
-                                *
-                              </span>
-                            )}
-                          </span>
                         </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="text-xs">
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      <div>
+                        <span className="font-semibold">
+                          {step.type === "page" ? "Page" : "Event"}:
+                        </span>{" "}
+                        {step.value}
+                      </div>
+                      {step.name && (
                         <div>
-                          <span className="font-semibold">
-                            {step.type === "page" ? "Page" : "Event"}:
-                          </span>{" "}
-                          {step.value}
+                          <span className="font-semibold">Label:</span>{" "}
+                          {step.name}
                         </div>
-                        {step.name && (
+                      )}
+                      {step.type === "event" &&
+                        step.eventPropertyKey &&
+                        step.eventPropertyValue !== undefined && (
                           <div>
-                            <span className="font-semibold">Label:</span>{" "}
-                            {step.name}
+                            <span className="font-semibold">Property:</span>{" "}
+                            {step.eventPropertyKey} ={" "}
+                            {String(step.eventPropertyValue)}
                           </div>
                         )}
-                        {step.type === "event" &&
-                          step.eventPropertyKey &&
-                          step.eventPropertyValue !== undefined && (
-                            <div>
-                              <span className="font-semibold">Property:</span>{" "}
-                              {step.eventPropertyKey} ={" "}
-                              {String(step.eventPropertyValue)}
-                            </div>
-                          )}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               ))}
             </div>
@@ -178,12 +177,13 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
                         {getParameterNameLabel(filter.parameter)}
                       </span>
                       <span
-                        className={`mx-1 ${
+                        className={cn(
+                          "mx-1",
                           filter.type === "not_equals" ||
-                          filter.type === "not_contains"
+                            filter.type === "not_contains"
                             ? "text-red-400"
                             : "text-emerald-400"
-                        }`}
+                        )}
                       >
                         {filterTypeToLabel(filter.type)}
                       </span>
@@ -227,7 +227,11 @@ export function FunnelRow({ funnel }: FunnelRowProps) {
             </Button>
 
             <Button variant="ghost" size="icon" onClick={handleExpand}>
-              {expanded ? <ChevronUp /> : <ChevronDown />}
+              {expanded ? (
+                <ChevronUp strokeWidth={3} />
+              ) : (
+                <ChevronDown strokeWidth={3} />
+              )}
             </Button>
           </div>
         </div>

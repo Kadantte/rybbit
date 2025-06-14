@@ -1,13 +1,14 @@
+import { FilterParameter } from "@rybbit/shared";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { FilterParameter, useStore } from "../../lib/store";
+import { useStore } from "../../lib/store";
 import { APIResponse } from "../types";
-import { BACKEND_URL } from "../../lib/const";
-import { getStartAndEndDate, authedFetch } from "../utils";
+import { authedFetch, getQueryParams } from "../utils";
 
 type PeriodTime = "current" | "previous";
 
 export type SingleColResponse = {
   value: string;
+  title?: string;
   count: number;
   percentage: number;
   pageviews?: number;
@@ -28,58 +29,35 @@ export function useSingleCol({
 }): UseQueryResult<APIResponse<SingleColResponse[]>> {
   const { time, previousTime, site, filters } = useStore();
   const timeToUse = periodTime === "previous" ? previousTime : time;
-  const { startDate, endDate } = getStartAndEndDate(timeToUse);
 
-  return useQuery({
-    queryKey: [parameter, timeToUse, site, filters, limit, useFilters],
-    queryFn: () => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      return authedFetch(`${BACKEND_URL}/single-col/${site}`, {
-        startDate,
-        endDate,
-        timezone,
-        parameter,
-        limit,
-        filters: useFilters ? filters : undefined,
-      }).then((res) => res.json());
-    },
-    staleTime: Infinity,
-    placeholderData: (_, query: any) => {
-      if (!query?.queryKey) return undefined;
-      const prevQueryKey = query.queryKey as [string, string, string];
-      const [, , prevSite] = prevQueryKey;
+  // For "previous" periods in past-minutes mode, we need to modify the time object
+  // to use doubled duration for the start and the original start as the end
+  const timeForQuery =
+    timeToUse.mode === "past-minutes" && periodTime === "previous"
+      ? {
+          ...timeToUse,
+          pastMinutesStart: timeToUse.pastMinutesStart * 2,
+          pastMinutesEnd: timeToUse.pastMinutesStart,
+        }
+      : timeToUse;
 
-      if (prevSite === site) {
-        return query.state.data;
-      }
-      return undefined;
-    },
+  const queryParams = getQueryParams(timeForQuery, {
+    parameter,
+    limit,
+    filters: useFilters ? filters : undefined,
   });
-}
 
-export function useSingleColRealtime({
-  parameter,
-  limit = 1000,
-  minutes = 30,
-}: {
-  parameter: FilterParameter;
-  limit?: number;
-  minutes?: number;
-}): UseQueryResult<APIResponse<SingleColResponse[]>> {
-  const { time, previousTime, site, filters } = useStore();
+  const queryKey = [parameter, timeForQuery, site, filters, limit, useFilters];
 
   return useQuery({
-    queryKey: [parameter, site, limit, minutes],
-    queryFn: () => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      return authedFetch(`${BACKEND_URL}/single-col/${site}`, {
-        timezone,
-        parameter,
-        limit,
-        minutes,
-      }).then((res) => res.json());
+    queryKey,
+    queryFn: async () => {
+      const response = await authedFetch<{
+        data: APIResponse<SingleColResponse[]>;
+      }>(`/single-col/${site}`, queryParams);
+      return response.data;
     },
-    staleTime: Infinity,
+    staleTime: 60_000,
     placeholderData: (_, query: any) => {
       if (!query?.queryKey) return undefined;
       const prevQueryKey = query.queryKey as [string, string, string];

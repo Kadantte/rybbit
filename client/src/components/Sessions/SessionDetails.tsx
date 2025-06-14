@@ -1,34 +1,35 @@
+import { CopyText } from "@/components/CopyText";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Avatar from "boring-avatars";
+import {
+  ArrowRight,
+  Clock,
+  FileText,
+  Loader2,
+  Monitor,
+  MousePointerClick,
+  Smartphone,
+  Tablet,
+} from "lucide-react";
 import { DateTime } from "luxon";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { memo, useMemo } from "react";
+import {
+  GetSessionsResponse,
+  SessionEvent,
+  useGetSessionDetailsInfinite,
+} from "../../api/analytics/userSessions";
 import { Browser } from "../../app/[site]/components/shared/icons/Browser";
 import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
 import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
-import { getCountryName, getLanguageName } from "../../lib/utils";
-import {
-  MonitorSmartphone,
-  Clock,
-  FileText,
-  MousePointerClick,
-  ArrowRight,
-  Loader2,
-  Smartphone,
-  Monitor,
-  Tablet,
-} from "lucide-react";
-import Avatar from "boring-avatars";
-import {
-  useGetSessionDetailsInfinite,
-  PageviewEvent,
-  GetSessionsResponse,
-} from "../../api/analytics/userSessions";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import Link from "next/link";
-import CopyText from "@/components/CopyText";
-import { memo, useMemo } from "react";
+import { cn, getCountryName, getLanguageName } from "../../lib/utils";
+import { formatDuration } from "../../lib/dateTimeUtils";
 import { Button } from "../ui/button";
-import { useParams } from "next/navigation";
+import { hour12 } from "../../lib/dateTimeUtils";
 
 // Component to display a single pageview or event
 function PageviewItem({
@@ -37,26 +38,23 @@ function PageviewItem({
   isLast = false,
   nextTimestamp,
 }: {
-  item: PageviewEvent;
+  item: SessionEvent;
   index: number;
   isLast?: boolean;
   nextTimestamp?: string; // Timestamp of the next event for duration calculation
 }) {
   const isEvent = item.type !== "pageview";
   const timestamp = DateTime.fromSQL(item.timestamp, { zone: "utc" }).toLocal();
-  const formattedTime = timestamp.toFormat("h:mm:ss a");
+  const formattedTime = timestamp.toFormat(hour12 ? "h:mm:ss a" : "HH:mm:ss");
 
   // Calculate duration if this is a pageview and we have the next timestamp
   let duration = null;
   if (!isEvent && nextTimestamp) {
     const nextTime = DateTime.fromSQL(nextTimestamp, { zone: "utc" }).toLocal();
-    const diff = nextTime.diff(timestamp, ["minutes", "seconds"]);
-    const minutes = Math.floor(diff.minutes);
-    const seconds = Math.floor(diff.seconds);
-
-    if (minutes > 0 || seconds > 0) {
-      duration = `${minutes > 0 ? `${minutes}m ` : ""}${seconds}s`;
-    }
+    const totalSeconds = Math.floor(
+      nextTime.diff(timestamp).milliseconds / 1000
+    );
+    duration = formatDuration(totalSeconds);
   }
 
   return (
@@ -73,9 +71,12 @@ function PageviewItem({
         )}
         {/* Connecting line */}
         <div
-          className={`flex items-center justify-center w-8 h-8 rounded-full ${
-            isEvent ? "bg-amber-900/30" : "bg-blue-900/30"
-          } border ${isEvent ? "border-amber-500/50" : "border-blue-500/50"}`}
+          className={cn(
+            "flex items-center justify-center w-8 h-8 rounded-full border",
+            isEvent
+              ? "bg-amber-900/30 border-amber-500/50"
+              : "bg-blue-900/30 border-blue-500/50"
+          )}
         >
           <span className="text-sm font-medium">{index + 1}</span>
         </div>
@@ -131,23 +132,20 @@ function PageviewItem({
         {isEvent && (
           <div className="flex items-center pl-7 mt-1">
             <div className="text-xs text-gray-400">
-              {item.properties &&
-              Object.keys(JSON.parse(item.properties)).length > 0 ? (
+              {item.props && Object.keys(item.props).length > 0 ? (
                 <span className="flex flex-wrap gap-2 mt-1">
-                  {Object.entries(JSON.parse(item.properties)).map(
-                    ([key, value]) => (
-                      <Badge
-                        key={key}
-                        variant="outline"
-                        className="px-1.5 py-0 h-5 text-xs bg-neutral-800 text-gray-100 font-medium"
-                      >
-                        <span className="text-gray-300 font-light mr-1">
-                          {key}:
-                        </span>{" "}
-                        {String(value)}
-                      </Badge>
-                    )
-                  )}
+                  {Object.entries(item.props).map(([key, value]) => (
+                    <Badge
+                      key={key}
+                      variant="outline"
+                      className="px-1.5 py-0 h-5 text-xs bg-neutral-800 text-gray-100 font-medium"
+                    >
+                      <span className="text-gray-300 font-light mr-1">
+                        {key}:
+                      </span>{" "}
+                      {String(value)}
+                    </Badge>
+                  ))}
                 </span>
               ) : null}
             </div>
@@ -200,14 +198,17 @@ const SessionDetailsTimelineSkeleton = memo(
                 <div className="flex items-center">
                   <Skeleton className="h-4 w-4 mr-3" />
                   <Skeleton
-                    className={`h-4 ${getRandomWidth()} max-w-md mr-4`}
+                    className={cn("h-4", getRandomWidth(), "max-w-md mr-4")}
                   />
                   <Skeleton className="h-3 w-16 flex-shrink-0 ml-auto" />
                 </div>
                 <div className="mt-1 pl-7">
                   {Math.random() > 0.5 && (
                     <Skeleton
-                      className={`h-3 ${Math.random() > 0.7 ? "w-48" : "w-32"}`}
+                      className={cn(
+                        "h-3",
+                        Math.random() > 0.7 ? "w-48" : "w-32"
+                      )}
                     />
                   )}
                 </div>
@@ -236,12 +237,10 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
   } = useGetSessionDetailsInfinite(session.session_id);
   const { site } = useParams();
 
-  // Flatten all pageview pages into a single array
-  const allPageviews = useMemo(() => {
+  // Flatten all events into a single array
+  const allEvents = useMemo(() => {
     if (!sessionDetailsData?.pages) return [];
-    return sessionDetailsData.pages.flatMap(
-      (page) => page.data?.pageviews || []
-    );
+    return sessionDetailsData.pages.flatMap((page) => page.data?.events || []);
   }, [sessionDetailsData?.pages]);
 
   // Get session details from the first page
@@ -249,14 +248,12 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
 
   // Calculate total pageviews and events
   const totalPageviews = useMemo(() => {
-    return allPageviews.filter((p: PageviewEvent) => p.type === "pageview")
-      .length;
-  }, [allPageviews]);
+    return allEvents.filter((p: SessionEvent) => p.type === "pageview").length;
+  }, [allEvents]);
 
   const totalEvents = useMemo(() => {
-    return allPageviews.filter((p: PageviewEvent) => p.type !== "pageview")
-      .length;
-  }, [allPageviews]);
+    return allEvents.filter((p: SessionEvent) => p.type !== "pageview").length;
+  }, [allEvents]);
 
   return (
     <div className="px-4 bg-neutral-900 border-t border-neutral-800">
@@ -297,7 +294,7 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                   <span>
                     Pageviews: {totalPageviews}
                     {sessionDetailsData.pages[0]?.data?.pagination?.total >
-                      allPageviews.length &&
+                      allEvents.length &&
                       ` of ${sessionDetailsData.pages[0]?.data?.pagination?.total}`}
                   </span>
                 </Badge>
@@ -310,12 +307,12 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                 </Badge>
               </div>
               <div className="px-1 pt-2 pb-1">
-                {allPageviews.map((pageview: PageviewEvent, index: number) => {
+                {allEvents.map((pageview: SessionEvent, index: number) => {
                   // Determine the next timestamp for duration calculation
                   // For the last item, use the session end time
                   let nextTimestamp;
-                  if (index < allPageviews.length - 1) {
-                    nextTimestamp = allPageviews[index + 1].timestamp;
+                  if (index < allEvents.length - 1) {
+                    nextTimestamp = allEvents[index + 1].timestamp;
                   } else if (sessionDetails) {
                     nextTimestamp = sessionDetails.session_end;
                   }
@@ -325,7 +322,7 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
                       key={`${pageview.timestamp}-${index}`}
                       item={pageview}
                       index={index}
-                      isLast={index === allPageviews.length - 1 && !hasNextPage}
+                      isLast={index === allEvents.length - 1 && !hasNextPage}
                       nextTimestamp={nextTimestamp}
                     />
                   );
@@ -353,7 +350,7 @@ export function SessionDetails({ session, userId }: SessionDetailsProps) {
 
                 {sessionDetailsData.pages[0]?.data?.pagination?.total > 0 && (
                   <div className="text-center text-xs text-gray-500 mt-2">
-                    Showing {allPageviews.length} of{" "}
+                    Showing {allEvents.length} of{" "}
                     {sessionDetailsData.pages[0]?.data?.pagination?.total}{" "}
                     events
                   </div>

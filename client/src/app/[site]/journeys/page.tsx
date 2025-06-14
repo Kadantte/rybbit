@@ -18,8 +18,10 @@ import { useEffect, useRef, useState } from "react";
 import { useGetSite } from "../../../api/admin/sites";
 import { DateSelector } from "../../../components/DateSelector/DateSelector";
 import { DateRangeMode, Time } from "../../../components/DateSelector/types";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { MobileSidebar } from "../../../components/MobileSidebar";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
+import { timeZone } from "../../../lib/dateTimeUtils";
 
 const MAX_LINK_HEIGHT = 100;
 
@@ -36,14 +38,15 @@ export default function JourneysPage() {
     startDate: DateTime.now().minus({ days: 7 }).toISODate(),
     endDate: DateTime.now().toISODate(),
     wellKnown: "Last 7 days",
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timeZone: timeZone,
   } as DateRangeMode);
 
   const { data, isLoading, error } = useJourneys({
     siteId: siteMetadata?.siteId,
     steps,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timeZone: timeZone,
     time,
+    limit: maxJourneys,
   });
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -54,21 +57,10 @@ export default function JourneysPage() {
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 1400;
-    const height = 1000;
-    const margin = { top: 30, right: 10, bottom: 30, left: 10 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    // Get container width for responsive sizing
+    const containerWidth = svgRef.current.parentElement?.clientWidth || 1000;
 
-    // Create the main group element
-    const g = svg
-      .attr("width", width)
-      .attr("height", height)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    // Create a Sankey diagram
-    // First, build nodes and links from journey data
+    // Build nodes first to calculate dimensions properly
     const nodes: any[] = [];
     const links: any[] = [];
 
@@ -108,6 +100,48 @@ export default function JourneysPage() {
       }
     });
 
+    // Calculate dimensions based on node distribution
+    const nodesByStep = d3.group(nodes, (d) => d.step);
+
+    // Calculate max nodes per step for height calculation
+    const maxNodesInAnyStep = Math.max(
+      ...Array.from(nodesByStep.values()).map((stepNodes) => stepNodes.length)
+    );
+
+    // Width calculation that fills available space but doesn't shrink below minimum
+    const minStepWidth = 300; // Minimum width per step
+    const minTotalWidth = minStepWidth * steps; // Minimum total width
+
+    // Calculate step width based on available space
+    const stepWidth = Math.max(
+      minStepWidth,
+      containerWidth / steps // Use full container width if it's large enough
+    );
+
+    // Calculate total width based on step width
+    const width = stepWidth * steps;
+
+    const minHeight = 500;
+
+    // Calculate height based on maximum node cardinality in any step
+    const baseNodeHeight = 60; // Height per node
+    const nodeSpacing = 20; // Spacing between nodes
+    const height = Math.max(
+      minHeight,
+      (baseNodeHeight + nodeSpacing) * maxNodesInAnyStep + 100 // 100px for margins
+    );
+
+    const margin = { top: 30, right: 30, bottom: 30, left: 30 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    // Create the main group element
+    const g = svg
+      .attr("width", width)
+      .attr("height", height)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
     // Track incoming and outgoing links for each node
     links.forEach((link) => {
       const sourceNode = nodes.find((n) => n.id === link.source);
@@ -116,12 +150,6 @@ export default function JourneysPage() {
       if (sourceNode) sourceNode.outgoingLinks.push(link);
       if (targetNode) targetNode.incomingLinks.push(link);
     });
-
-    // Create scales for each step
-    const stepWidth = innerWidth / steps;
-
-    // Group nodes by step
-    const nodesByStep = d3.group(nodes, (d) => d.step);
 
     // Position nodes vertically within each step
     nodesByStep.forEach((stepNodes, step) => {
@@ -247,9 +275,13 @@ export default function JourneysPage() {
         const sourceX = source.x + 10; // End of source bar (x + width)
         const targetX = target.x; // Start of target bar
 
+        // Control points at 1/3 and 2/3 of the distance between nodes
+        const controlPoint1X = sourceX + stepWidth / 3;
+        const controlPoint2X = targetX - stepWidth / 3;
+
         return `M ${sourceX},${sourceY} 
-                C ${sourceX + stepWidth / 3},${sourceY} 
-                  ${targetX - stepWidth / 3},${targetY} 
+                C ${controlPoint1X},${sourceY} 
+                  ${controlPoint2X},${targetY} 
                   ${targetX},${targetY}`;
       })
       .attr("fill", "none")
@@ -400,81 +432,88 @@ export default function JourneysPage() {
   }, [data, steps, maxJourneys, siteMetadata]);
 
   return (
-    <div className="container mx-auto p-2 md:p-4">
-      <div className="md:hidden mb-2">
-        <MobileSidebar />
+    <DisabledOverlay message="User Journeys">
+      <div className="container mx-auto p-2 md:p-4">
+        <div className="md:hidden mb-2">
+          <MobileSidebar />
+        </div>
+        <div className="flex justify-end items-center gap-2 mb-2">
+          <DateSelector
+            time={time}
+            setTime={setTime}
+            pastMinutesEnabled={false}
+          />
+          <Select
+            value={steps.toString()}
+            onValueChange={(value) => setSteps(Number(value))}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Number of steps" />
+            </SelectTrigger>
+            <SelectContent>
+              {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
+                <SelectItem key={step} value={step.toString()}>
+                  {step} steps
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={maxJourneys.toString()}
+            onValueChange={(value) => setMaxJourneys(Number(value))}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Max journeys" />
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 25, 50, 100, 150, 200].map((count) => (
+                <SelectItem key={count} value={count.toString()}>
+                  {count} journeys
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Card className="w-full">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>User Journeys</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading && (
+              <div className="flex flex-col space-y-4">
+                <Skeleton className="h-[1000px] w-full rounded-md" />
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>
+                  Failed to load journey data. Please try again.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {data?.journeys?.length === 0 && !isLoading && !error && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No Data</AlertTitle>
+                <AlertDescription>
+                  No journey data found for the selected criteria.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {data?.journeys?.length && data?.journeys?.length > 0 ? (
+              <div className="overflow-x-auto w-full">
+                <svg ref={svgRef} className="min-w-full" />
+                {/* <svg ref={svgRef} className="w-full h-[1000px]" /> */}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
-      <div className="flex justify-end items-center gap-2 mb-2">
-        <DateSelector time={time} setTime={setTime} />
-        <Select
-          value={steps.toString()}
-          onValueChange={(value) => setSteps(Number(value))}
-        >
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="Number of steps" />
-          </SelectTrigger>
-          <SelectContent>
-            {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
-              <SelectItem key={step} value={step.toString()}>
-                {step} steps
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={maxJourneys.toString()}
-          onValueChange={(value) => setMaxJourneys(Number(value))}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Max journeys" />
-          </SelectTrigger>
-          <SelectContent>
-            {[10, 25, 50, 100].map((count) => (
-              <SelectItem key={count} value={count.toString()}>
-                {count} journeys
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <Card className="w-full">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>User Journeys</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading && (
-            <div className="flex flex-col space-y-4">
-              <Skeleton className="h-[1000px] w-full rounded-md" />
-            </div>
-          )}
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                Failed to load journey data. Please try again.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {data?.journeys?.length === 0 && !isLoading && !error && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Data</AlertTitle>
-              <AlertDescription>
-                No journey data found for the selected criteria.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {data?.journeys?.length && data?.journeys?.length > 0 ? (
-            <div className="overflow-x-auto">
-              <svg ref={svgRef} className="w-full h-[1000px]" />
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
+    </DisabledOverlay>
   );
 }

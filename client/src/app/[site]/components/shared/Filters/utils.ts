@@ -1,4 +1,4 @@
-import { Filter, FilterParameter, FilterType } from "../../../../../lib/store";
+import { Filter, FilterParameter, FilterType } from "@rybbit/shared";
 import { getCountryName } from "../../../../../lib/utils";
 
 export function getParameterNameLabel(parameter: FilterParameter) {
@@ -25,6 +25,8 @@ export function getParameterNameLabel(parameter: FilterParameter) {
       return "City";
     case "region":
       return "Region";
+    case "channel":
+      return "Channel";
     case "entry_page":
       return "Entry Page";
     case "exit_page":
@@ -43,6 +45,10 @@ export function getParameterNameLabel(parameter: FilterParameter) {
       return "UTM Term";
     case "utm_content":
       return "UTM Content";
+    case "browser_version":
+      return "Browser Version";
+    case "operating_system_version":
+      return "OS Version";
     default:
       return parameter;
   }

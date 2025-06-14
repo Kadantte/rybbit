@@ -1,4 +1,5 @@
 "use client";
+import { Filter, FilterParameter } from "@rybbit/shared";
 import { ListFilterPlus, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../../../../components/ui/button";
@@ -7,11 +8,15 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../../../../../components/ui/dropdown-menu";
-import { Filter, useStore } from "../../../../../lib/store";
+import { useStore } from "../../../../../lib/store";
 import { sleep } from "../../../../../lib/utils";
 import { FilterComponent } from "../../shared/Filters/FilterComponent";
 
-export function NewFilterButton() {
+export function NewFilterButton({
+  availableFilters,
+}: {
+  availableFilters?: FilterParameter[];
+}) {
   const { filters, setFilters } = useStore();
 
   const [localFilters, setLocalFilters] = useState<Filter[]>(filters);
@@ -32,7 +37,7 @@ export function NewFilterButton() {
     setLocalFilters([
       ...localFilters,
       {
-        parameter: "pathname",
+        parameter: availableFilters?.[0] || "pathname",
         type: "equals",
         value: [],
       },
@@ -81,6 +86,7 @@ export function NewFilterButton() {
               filter={filter}
               index={index}
               updateFilter={updateLocalFilters}
+              availableFilters={availableFilters}
             />
           ))}
         </div>

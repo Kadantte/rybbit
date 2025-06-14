@@ -2,8 +2,9 @@ import { nivoTheme } from "@/lib/nivo";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import { formatter } from "../lib/utils";
 import { GetOverviewBucketedResponse } from "../api/analytics/useGetOverviewBucketed";
+import { formatter } from "../lib/utils";
+import { hour12 } from "../lib/dateTimeUtils";
 
 interface SiteSessionChartProps {
   data: GetOverviewBucketedResponse;
@@ -59,7 +60,8 @@ export function SiteSessionChart({
           tickRotation: 0,
           tickValues: 3,
           format: (value) => {
-            return DateTime.fromJSDate(value).toFormat("ha");
+            const time = DateTime.fromJSDate(value);
+            return time.toFormat(hour12 ? "ha" : "HH:mm");
           },
         }}
         axisLeft={{
@@ -96,7 +98,7 @@ export function SiteSessionChart({
               <div className="text-xs mb-1">Sessions</div>
               <div className="flex justify-between text-xs w-20">
                 <div className="text-muted-foreground">
-                  {currentTime.toFormat("ha")}
+                  { currentTime.toFormat(hour12 ? "ha" : "HH:mm") }
                 </div>
                 <div className="font-medium">{currentY.toLocaleString()}</div>
               </div>

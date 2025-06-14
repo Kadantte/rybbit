@@ -1,4 +1,3 @@
-import { FunnelResponse, FunnelStep } from "@/api/analytics/useGetFunnel";
 import { Time } from "@/components/DateSelector/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,12 +12,15 @@ import {
 import { ListFilterPlus, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ThreeDotLoader } from "../../../../components/Loaders";
-import { Filter } from "../../../../lib/store";
+import { Filter } from "@rybbit/shared";
 import { FilterComponent } from "../../components/shared/Filters/FilterComponent";
 import { Funnel } from "./Funnel";
-import { SavedFunnel } from "../../../../api/analytics/useGetFunnels";
 import { Switch } from "../../../../components/ui/switch";
 import { Label } from "../../../../components/ui/label";
+import {
+  FunnelResponse,
+  FunnelStep,
+} from "../../../../api/analytics/funnels/useGetFunnel";
 
 interface FunnelFormProps {
   name: string;
@@ -61,7 +63,6 @@ export function FunnelForm({
   saveError,
   funnelData,
 }: FunnelFormProps) {
-  console.info(funnelData);
   const [showFilters, setShowFilters] = useState(filters.length > 0);
   // State to track which event steps have property filtering enabled
   const [useProperties, setUseProperties] = useState<boolean[]>(() =>

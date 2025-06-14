@@ -33,7 +33,15 @@ services:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8123/ping",
+        ]
       interval: 3s
       timeout: 5s
       retries: 5
@@ -49,14 +57,20 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-analytics}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   backend:
     image: ghcr.io/rybbit-io/rybbit-backend:${IMAGE_TAG:-latest}
     container_name: backend
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     ports:
       - "${HOST_BACKEND_PORT}"
     environment:
@@ -77,21 +91,29 @@ services:
         condition: service_healthy
       postgres:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   client:
     image: ghcr.io/rybbit-io/rybbit-client:${IMAGE_TAG:-latest}
     container_name: client
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: client/Dockerfile
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
+        NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
     ports:
       - "${HOST_CLIENT_PORT}"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
+      - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
     depends_on:
       - backend
     restart: unless-stopped
@@ -99,5 +121,5 @@ services:
 volumes:
   clickhouse-data:
   postgres-data:
-  caddy_data:     # Persistent volume for Caddy's certificates and state
-  caddy_config:   # Persistent volume for Caddy's configuration cache (optional but good practice)
+  caddy_data: # Persistent volume for Caddy's certificates and state
+  caddy_config: # Persistent volume for Caddy's configuration cache (optional but good practice)

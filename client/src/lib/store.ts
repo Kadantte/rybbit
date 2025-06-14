@@ -1,17 +1,7 @@
+import { Filter, FilterParameter, TimeBucket } from "@rybbit/shared";
 import { DateTime } from "luxon";
 import { create } from "zustand";
 import { Time } from "../components/DateSelector/types";
-
-export type TimeBucket =
-  | "minute"
-  | "five_minutes"
-  | "ten_minutes"
-  | "fifteen_minutes"
-  | "hour"
-  | "day"
-  | "week"
-  | "month"
-  | "year";
 
 export type StatType =
   | "pageviews"
@@ -21,33 +11,8 @@ export type StatType =
   | "bounce_rate"
   | "session_duration";
 
-export type FilterType = "equals" | "not_equals" | "contains" | "not_contains";
-
-export type FilterParameter =
-  | "browser"
-  | "operating_system"
-  | "language"
-  | "country"
-  | "region"
-  | "city"
-  | "device_type"
-  | "referrer"
-  | "pathname"
-  | "page_title"
-  | "querystring"
-  | "event_name"
-  | "channel"
-  | "utm_source"
-  | "utm_medium"
-  | "utm_campaign"
-  | "utm_term"
-  | "utm_content"
-  // derivative parameters
-  | "entry_page"
-  | "exit_page"
-  | "dimensions";
-
 export const SESSION_PAGE_FILTERS: FilterParameter[] = [
+  "hostname",
   "browser",
   "operating_system",
   "language",
@@ -74,7 +39,7 @@ export const EVENT_FILTERS: FilterParameter[] = [
   // "country",
   // "device_type",
   // "referrer",
-
+  "hostname",
   "browser",
   "operating_system",
   "language",
@@ -99,6 +64,7 @@ export const EVENT_FILTERS: FilterParameter[] = [
 ];
 
 export const GOALS_PAGE_FILTERS: FilterParameter[] = [
+  "hostname",
   "browser",
   "operating_system",
   "language",
@@ -114,6 +80,7 @@ export const GOALS_PAGE_FILTERS: FilterParameter[] = [
 ];
 
 export const USER_PAGE_FILTERS: FilterParameter[] = [
+  "hostname",
   "browser",
   "operating_system",
   "language",
@@ -123,12 +90,6 @@ export const USER_PAGE_FILTERS: FilterParameter[] = [
   "device_type",
   "referrer",
 ];
-
-export type Filter = {
-  parameter: FilterParameter;
-  value: string[];
-  type: FilterType;
-};
 
 type Store = {
   site: string;
@@ -194,6 +155,18 @@ export const useStore = create<Store>((set) => ({
       previousTime = {
         mode: "day",
         day: DateTime.fromISO(time.day).minus({ days: 1 }).toISODate() ?? "",
+      };
+    } else if (time.mode === "past-minutes") {
+      const timeDiff = time.pastMinutesStart - time.pastMinutesEnd;
+
+      if (timeDiff <= 120) {
+        bucketToUse = "minute";
+      }
+
+      previousTime = {
+        mode: "past-minutes",
+        pastMinutesStart: time.pastMinutesStart + timeDiff,
+        pastMinutesEnd: time.pastMinutesEnd + timeDiff,
       };
     } else if (time.mode === "range") {
       const timeRangeLength =

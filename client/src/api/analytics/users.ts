@@ -1,13 +1,14 @@
+import { Filter } from "@rybbit/shared";
 import { useQuery } from "@tanstack/react-query";
-import { BACKEND_URL } from "../../lib/const";
+import { timeZone } from "../../lib/dateTimeUtils";
 import {
   useStore,
-  Filter,
   USER_PAGE_FILTERS,
   getFilteredFilters,
 } from "../../lib/store";
-import { getStartAndEndDate, authedFetch } from "../utils";
+import { authedFetch, getStartAndEndDate } from "../utils";
 import { APIResponse } from "../types";
+import { getQueryParams } from "../utils";
 
 export type UsersResponse = {
   user_id: string;
@@ -35,7 +36,8 @@ export interface GetUsersOptions {
 
 export function useGetUsers(options: GetUsersOptions) {
   const { time, site } = useStore();
-  const { startDate, endDate } = getStartAndEndDate(time);
+  // Get the appropriate time parameters using getQueryParams
+  const timeParams = getQueryParams(time);
 
   const { page, pageSize, sortBy, sortOrder } = options;
   const filteredFilters = getFilteredFilters(USER_PAGE_FILTERS);
@@ -58,18 +60,26 @@ export function useGetUsers(options: GetUsersOptions) {
       filteredFilters,
     ],
     queryFn: async () => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-      return authedFetch(`${BACKEND_URL}/users/${site}`, {
-        startDate,
-        endDate,
-        timezone,
+      // Build request parameters
+      const requestParams: Record<string, any> = {
+        timeZone,
         filters: filteredFilters,
         page,
         pageSize,
         sortBy,
         sortOrder,
-      }).then((res) => res.json());
+      };
+
+      // Add time parameters (getQueryParams handles both past-minutes and regular modes)
+      Object.assign(requestParams, timeParams);
+
+      return authedFetch<
+        APIResponse<UsersResponse[]> & {
+          totalCount: number;
+          page: number;
+          pageSize: number;
+        }
+      >(`/users/${site}`, requestParams);
     },
     // Use default staleTime (0) for real-time data
     staleTime: 0,

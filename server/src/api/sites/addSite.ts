@@ -2,7 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { sites } from "../../db/postgres/schema.js";
 import { loadAllowedDomains } from "../../lib/allowedDomains.js";
-import { auth } from "../../lib/auth.js";
+import { getSessionFromReq } from "../../lib/auth-utils.js";
 import { siteConfig } from "../../lib/siteConfig.js";
 
 export async function addSite(
@@ -13,6 +13,7 @@ export async function addSite(
       organizationId: string;
       public?: boolean;
       saltUserIds?: boolean;
+      blockBots?: boolean;
     };
   }>,
   reply: FastifyReply
@@ -23,6 +24,7 @@ export async function addSite(
     organizationId,
     public: isPublic,
     saltUserIds,
+    blockBots,
   } = request.body;
 
   // Validate domain format using regex
@@ -36,9 +38,7 @@ export async function addSite(
   }
 
   try {
-    // Get the current user's session
-    const headers = new Headers(request.headers as any);
-    const session = await auth!.api.getSession({ headers });
+    const session = await getSessionFromReq(request);
 
     if (!session?.user?.id) {
       return reply.status(401).send({
@@ -78,17 +78,6 @@ export async function addSite(
       });
     }
 
-    // Check if site already exists
-    const existingSite = await db.query.sites.findFirst({
-      where: (sites, { eq }) => eq(sites.domain, domain),
-    });
-
-    if (existingSite) {
-      return reply.status(400).send({
-        error: "Site already exists",
-      });
-    }
-
     // Create the new site
     const newSite = await db
       .insert(sites)
@@ -99,6 +88,7 @@ export async function addSite(
         organizationId,
         public: isPublic || false,
         saltUserIds: saltUserIds || false,
+        blockBots: blockBots === undefined ? true : blockBots,
       })
       .returning();
 
@@ -110,6 +100,8 @@ export async function addSite(
       public: newSite[0].public || false,
       saltUserIds: newSite[0].saltUserIds || false,
       domain: newSite[0].domain,
+      blockBots:
+        newSite[0].blockBots === undefined ? true : newSite[0].blockBots,
     });
 
     return reply.status(201).send(newSite[0]);

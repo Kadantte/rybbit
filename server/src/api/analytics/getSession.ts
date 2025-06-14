@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import { processResults } from "./utils.js";
 
@@ -26,7 +26,7 @@ export interface SessionDetails {
   exit_page: string;
 }
 
-export interface PageviewEvent {
+export interface Event {
   timestamp: string;
   pathname: string;
   hostname: string;
@@ -40,7 +40,7 @@ export interface PageviewEvent {
 
 export interface SessionPageviewsAndEvents {
   session: SessionDetails;
-  pageviews: PageviewEvent[];
+  events: Event[];
   pagination: {
     total: number;
     limit: number;
@@ -57,6 +57,7 @@ export interface GetSessionRequest {
   Querystring: {
     limit?: string;
     offset?: string;
+    minutes?: string;
   };
 }
 
@@ -67,11 +68,20 @@ export async function getSession(
   const { sessionId, site } = req.params;
   const limit = req.query.limit ? parseInt(req.query.limit) : 100;
   const offset = req.query.offset ? parseInt(req.query.offset) : 0;
+  const minutes = req.query.minutes ? parseInt(req.query.minutes) : undefined;
 
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
     return res.status(403).send({ error: "Forbidden" });
   }
+
+  // Add time filter if minutes is provided
+  const timeFilter = minutes
+    ? `timestamp > now() - interval ${minutes} minute`
+    : "";
+
+  // Add the WHERE clause connector if timeFilter exists
+  const timeFilterWithConnector = timeFilter ? `AND ${timeFilter}` : "";
 
   try {
     // 1. First query: Get session data derived from events
@@ -101,6 +111,7 @@ FROM events
 WHERE 
     site_id = {siteId:Int32}
     AND session_id = {sessionId:String}
+    ${timeFilterWithConnector}
 GROUP BY session_id
 LIMIT 1
     `;
@@ -113,10 +124,12 @@ FROM events
 WHERE
     site_id = {siteId:Int32}
     AND session_id = {sessionId:String}
+    AND type != 'performance'
+    ${timeFilterWithConnector}
     `;
 
     // 3. Query to get paginated pageviews
-    const pageviewsQuery = `
+    const eventsQuery = `
 SELECT
     timestamp,
     pathname,
@@ -131,13 +144,15 @@ FROM events
 WHERE
     site_id = {siteId:Int32}
     AND session_id = {sessionId:String}
+    AND type != 'performance'
+    ${timeFilterWithConnector}
 ORDER BY timestamp ASC
 LIMIT {limit:Int32}
 OFFSET {offset:Int32}
     `;
 
     // Execute queries in parallel
-    const [sessionResultSettled, countResultSettled, pageviewsResultSettled] =
+    const [sessionResultSettled, countResultSettled, eventsResultSettled] =
       await Promise.allSettled([
         clickhouse.query({
           query: sessionQuery,
@@ -156,7 +171,7 @@ OFFSET {offset:Int32}
           },
         }),
         clickhouse.query({
-          query: pageviewsQuery,
+          query: eventsQuery,
           format: "JSONEachRow",
           query_params: {
             siteId: Number(site),
@@ -174,17 +189,17 @@ OFFSET {offset:Int32}
     if (countResultSettled.status === "rejected") {
       throw countResultSettled.reason;
     }
-    if (pageviewsResultSettled.status === "rejected") {
-      throw pageviewsResultSettled.reason;
+    if (eventsResultSettled.status === "rejected") {
+      throw eventsResultSettled.reason;
     }
 
     const sessionResult = sessionResultSettled.value;
     const countResult = countResultSettled.value;
-    const pageviewsResult = pageviewsResultSettled.value;
+    const eventsResult = eventsResultSettled.value;
 
     const sessionData = await processResults<SessionDetails>(sessionResult);
     const countData = await processResults<{ total: number }>(countResult);
-    const pageviewsData = await processResults<PageviewEvent>(pageviewsResult);
+    const eventsData = await processResults<Event>(eventsResult);
 
     if (!sessionData || sessionData.length === 0) {
       return res.status(404).send({ error: "Session not found" });
@@ -193,12 +208,12 @@ OFFSET {offset:Int32}
     // Combine results
     const response: SessionPageviewsAndEvents = {
       session: sessionData[0],
-      pageviews: pageviewsData,
+      events: eventsData,
       pagination: {
         total: countData[0].total,
         limit,
         offset,
-        hasMore: offset + pageviewsData.length < countData[0].total,
+        hasMore: offset + eventsData.length < countData[0].total,
       },
     };
 
@@ -208,5 +223,3 @@ OFFSET {offset:Int32}
     return res.status(500).send({ error: "Failed to fetch session data" });
   }
 }
-
-export default { getSession };

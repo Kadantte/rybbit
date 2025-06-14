@@ -1,29 +1,29 @@
-import { memo, useState } from "react";
-import { DateTime } from "luxon";
-import { Browser } from "../../app/[site]/components/shared/icons/Browser";
-import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
-import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
-import { formatter, getCountryName } from "../../lib/utils";
-import {
-  Laptop,
-  Smartphone,
-  ChevronDown,
-  ChevronRight,
-  ArrowRight,
-  Clock,
-  FileText,
-  MousePointerClick,
-} from "lucide-react";
-import Avatar from "boring-avatars";
-import { GetSessionsResponse } from "../../api/analytics/userSessions";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { SessionDetails } from "./SessionDetails";
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Laptop,
+  MousePointerClick,
+  Smartphone,
+} from "lucide-react";
+import { DateTime, Duration } from "luxon";
+import { memo, useState } from "react";
+import { GetSessionsResponse } from "../../api/analytics/userSessions";
+import { Browser } from "../../app/[site]/components/shared/icons/Browser";
+import { CountryFlag } from "../../app/[site]/components/shared/icons/CountryFlag";
+import { OperatingSystem } from "../../app/[site]/components/shared/icons/OperatingSystem";
+import { cn, formatter, getCountryName } from "../../lib/utils";
+import { formatDuration } from "../../lib/dateTimeUtils";
 import { Badge } from "../ui/badge";
+import { SessionDetails } from "./SessionDetails";
+import { userLocale, hour12 } from "../../lib/dateTimeUtils";
 
 interface SessionCardProps {
   session: GetSessionsResponse[number];
@@ -57,10 +57,8 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
   // Calculate session duration in minutes
   const start = DateTime.fromSQL(session.session_start);
   const end = DateTime.fromSQL(session.session_end);
-  const duration = end.diff(start, ["minutes", "seconds"]);
-  const durationFormatted = `${Math.floor(duration.minutes)}m ${Math.floor(
-    duration.seconds
-  )}s`;
+  const totalSeconds = Math.floor(end.diff(start).milliseconds / 1000);
+  const duration = formatDuration(totalSeconds);
 
   // Truncate user ID to first 8 characters
   const truncatedUserId = session.user_id.substring(0, 8);
@@ -195,18 +193,19 @@ export function SessionCard({ session, onClick, userId }: SessionCardProps) {
               {DateTime.fromSQL(session.session_start, {
                 zone: "utc",
               })
+                .setLocale(userLocale)
                 .toLocal()
-                .toFormat("MMM d, h:mm a")}
+                .toFormat(hour12 ? "MMM d, h:mm a" : "dd MMM, HH:mm")}
             </span>
-            <span className="hidden md:block">{durationFormatted}</span>
+            <span className="hidden md:block">{duration}</span>
           </div>
 
           {/* Expand/Collapse icon */}
           <div className="ml-2 flex-shrink-0 hidden md:flex">
             {expanded ? (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
+              <ChevronDown className="w-4 h-4 text-gray-400" strokeWidth={3} />
             ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 text-gray-400" strokeWidth={3} />
             )}
           </div>
         </div>
@@ -274,21 +273,21 @@ export const SessionCardSkeleton = memo(() => {
 
           {/* Entry/Exit paths with randomized widths */}
           <div className="items-center ml-3 flex-1 min-w-0 hidden md:flex">
-            <Skeleton className={`h-3 max-w-[200px] ${getRandomWidth()}`} />
+            <Skeleton className={cn("h-3 max-w-[200px]", getRandomWidth())} />
             <div className="mx-2 flex-shrink-0">
               <Skeleton className="h-3 w-3" />
             </div>
-            <Skeleton className={`h-3 max-w-[200px] ${getRandomWidth()}`} />
+            <Skeleton className={cn("h-3 max-w-[200px]", getRandomWidth())} />
           </div>
 
           {/* Time */}
           <div className="flex items-center gap-4">
             {/* Date/time skeleton */}
-            <Skeleton className={`h-3 ${getRandomTimeWidth()}`} />
+            <Skeleton className={cn("h-3", getRandomTimeWidth())} />
 
             {/* Duration skeleton */}
             <Skeleton
-              className={`h-3 ${getRandomDurationWidth()} hidden md:block`}
+              className={cn("h-3", getRandomDurationWidth(), "hidden md:block")}
             />
           </div>
 

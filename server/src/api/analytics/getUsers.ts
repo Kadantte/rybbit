@@ -1,11 +1,12 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import {
   getFilterStatement,
   getTimeStatement,
   processResults,
 } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
+import { FilterParams } from "@rybbit/shared";
 
 export type GetUsersResponse = {
   user_id: string;
@@ -27,16 +28,12 @@ export interface GetUsersRequest {
   Params: {
     site: string;
   };
-  Querystring: {
-    startDate: string;
-    endDate: string;
-    timezone: string;
-    filters: string;
+  Querystring: FilterParams<{
     page?: string;
     pageSize?: string;
     sortBy?: string;
     sortOrder?: string;
-  };
+  }>;
 }
 
 export async function getUsers(
@@ -46,12 +43,14 @@ export async function getUsers(
   const {
     startDate,
     endDate,
-    timezone,
+    timeZone,
     filters,
     page = "1",
     pageSize = "20",
     sortBy = "last_seen",
     sortOrder = "desc",
+    pastMinutesStart,
+    pastMinutesEnd,
   } = req.query;
   const site = req.params.site;
 
@@ -77,9 +76,7 @@ export async function getUsers(
 
   // Generate filter statement and time statement
   const filterStatement = getFilterStatement(filters);
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
-  });
+  const timeStatement = getTimeStatement(req.query);
 
   const query = `
 WITH AggregatedUsers AS (

@@ -3,13 +3,12 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatSecondsAsMinutesAndSeconds } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
-import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
-import { StatType, useStore } from "../../../../../lib/store";
-import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
-import { SparklinesChart } from "./SparklinesChart";
-import { TrendingDown } from "lucide-react";
-import { TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
+import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { StatType, useStore } from "../../../../../lib/store";
+import { SparklinesChart } from "./SparklinesChart";
 
 const ChangePercentage = ({
   current,
@@ -73,16 +72,34 @@ const Stat = ({
   postfix?: string;
   reverseColor?: boolean;
 }) => {
-  const { selectedStat, setSelectedStat, site, bucket } = useStore();
+  const { selectedStat, setSelectedStat, site, bucket, time } = useStore();
   const [isHovering, setIsHovering] = useState(false);
 
-  const { data, isFetching, error } = useGetOverviewBucketed({ site, bucket });
+  // Consolidated bucketed data for sparklines - automatically handles both modes
+  const { data } = useGetOverviewBucketed({
+    site,
+    bucket,
+  });
 
+  // Filter and format sparklines data
   const sparklinesData =
-    data?.data?.map((d) => ({
-      value: d[id],
-      time: d.time,
-    })) ?? [];
+    data?.data
+      ?.filter((d) => {
+        // For past-minutes mode, ensure we only show data within the specified time range
+        if (time.mode === "past-minutes") {
+          const timestamp = new Date(d.time);
+          const now = new Date();
+          const startTime = new Date(
+            now.getTime() - time.pastMinutesStart * 60 * 1000
+          );
+          return timestamp >= startTime && timestamp <= now;
+        }
+        return true;
+      })
+      .map((d: any) => ({
+        value: d[id],
+        time: d.time,
+      })) ?? [];
 
   return (
     <div
@@ -94,7 +111,7 @@ const Stat = ({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <div className={cn("flex flex-col px-3 py-2")}>
+      <div className="flex flex-col px-3 py-2">
         <div className="text-sm font-medium text-muted-foreground">{title}</div>
         <div className="text-2xl font-medium flex gap-2 items-center justify-between">
           {isLoading ? (
@@ -136,14 +153,23 @@ const Stat = ({
 
 export function Overview() {
   const { site } = useStore();
+
+  // Current period - automatically handles both regular time-based and past-minutes queries
   const {
     data: overviewData,
     isFetching: isOverviewFetching,
     isLoading: isOverviewLoading,
     error: overviewError,
-  } = useGetOverview({ site });
+  } = useGetOverview({
+    site,
+  });
+
+  // Previous period - automatically handles both regular time-based and past-minutes queries
   const { data: overviewDataPrevious, isLoading: isOverviewLoadingPrevious } =
-    useGetOverview({ site, periodTime: "previous" });
+    useGetOverview({
+      site,
+      periodTime: "previous",
+    });
 
   const isLoading = isOverviewLoading || isOverviewLoadingPrevious;
 

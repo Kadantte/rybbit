@@ -1,14 +1,14 @@
 "use client";
 
 import { nivoTheme } from "@/lib/nivo";
+import { ResponsiveLine } from "@nivo/line";
+import { DateTime } from "luxon";
+import { useMemo } from "react";
 import {
   ProcessedRetentionData,
   RetentionMode,
 } from "../../../api/analytics/useGetRetention";
-import { ResponsiveLine } from "@nivo/line";
-import { useMemo } from "react";
 import { Skeleton } from "../../../components/ui/skeleton";
-import { DateTime } from "luxon";
 
 interface RetentionChartProps {
   data: ProcessedRetentionData | undefined;
@@ -76,22 +76,18 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
 
       // Format the date label based on mode
       let formattedDate: string;
+      const startDate = DateTime.fromISO(cohortKey);
       if (mode === "day") {
-        formattedDate = DateTime.fromISO(cohortKey).toFormat("MMM dd");
+        formattedDate = startDate.toFormat("MMM dd");
       } else {
         // For weekly mode
-        const startDate = DateTime.fromISO(cohortKey);
         const endDate = startDate.plus({ days: 6 });
 
         // If same month, don't repeat month
         if (startDate.month === endDate.month) {
-          formattedDate = `${startDate.toFormat("MMM dd")}-${endDate.toFormat(
-            "dd"
-          )}`;
+          formattedDate = `${startDate.toFormat("MMM dd")}-${endDate.toFormat("dd")}`;
         } else {
-          formattedDate = `${startDate.toFormat("MMM dd")}-${endDate.toFormat(
-            "MMM dd"
-          )}`;
+          formattedDate = `${startDate.toFormat("MMM dd")}-${endDate.toFormat("MMM dd")}`;
         }
       }
 
@@ -202,33 +198,29 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
 
           // Find the original cohort date by matching the formatted label
           const cohortEntry = chartData.find(
-            (series) => series.id === point.serieId
+            (series) => series.id === point.seriesId
           );
           const cohortIndex = cohortEntry ? chartData.indexOf(cohortEntry) : -1;
           const originalCohortKey =
             cohortIndex >= 0 && cohortKeys && cohortKeys[cohortIndex];
 
           // Format full date for tooltip
-          let cohortDateDisplay = point.serieId;
+          let cohortDateDisplay = point.seriesId;
           if (originalCohortKey) {
+            const startDate = DateTime.fromISO(originalCohortKey);
             if (mode === "day") {
-              cohortDateDisplay =
-                DateTime.fromISO(originalCohortKey).toFormat("MMM dd, yyyy");
+              cohortDateDisplay = startDate.toFormat("MMM dd, yyyy");
             } else {
-              const startDate = DateTime.fromISO(originalCohortKey);
               const endDate = startDate.plus({ days: 6 });
 
               if (startDate.month === endDate.month) {
-                cohortDateDisplay = `${startDate.toFormat(
-                  "MMM dd"
+                cohortDateDisplay = `${startDate.toFormat("MMM dd"
                 )} - ${endDate.toFormat("dd, yyyy")}`;
               } else if (startDate.year === endDate.year) {
-                cohortDateDisplay = `${startDate.toFormat(
-                  "MMM dd"
+                cohortDateDisplay = `${startDate.toFormat("MMM dd"
                 )} - ${endDate.toFormat("MMM dd, yyyy")}`;
               } else {
-                cohortDateDisplay = `${startDate.toFormat(
-                  "MMM dd, yyyy"
+                cohortDateDisplay = `${startDate.toFormat("MMM dd, yyyy"
                 )} - ${endDate.toFormat("MMM dd, yyyy")}`;
               }
             }
@@ -238,7 +230,7 @@ export function RetentionChart({ data, isLoading, mode }: RetentionChartProps) {
             <div className="text-sm bg-neutral-850 p-2 rounded-md border border-neutral-800 shadow-md">
               <div
                 className="font-medium mb-1"
-                style={{ color: point.serieColor }}
+                style={{ color: point.seriesColor }}
               >
                 Cohort: {cohortDateDisplay}
               </div>

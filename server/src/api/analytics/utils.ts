@@ -1,61 +1,87 @@
 import { ResultSet } from "@clickhouse/client";
-import { Filter, FilterParameter, FilterType } from "./types.js";
-import {
-  validateTimeStatementParams,
-  validateFilters,
-  filterParamSchema,
-} from "./query-validation.js";
+import { FilterParams } from "@rybbit/shared";
 import SqlString from "sqlstring";
+import {
+  filterParamSchema,
+  validateFilters,
+  validateTimeStatementParams,
+} from "./query-validation.js";
+import { FilterParameter, FilterType } from "./types.js";
 
-export function getTimeStatement({
-  date,
-  pastMinutes,
-}: {
-  date?: {
-    startDate?: string;
-    endDate?: string;
-    timezone?: string;
-    table?: "events" | "sessions";
-  };
-  pastMinutes?: number;
-}) {
+export function getTimeStatement(
+  params: Pick<
+    FilterParams,
+    "startDate" | "endDate" | "timeZone" | "pastMinutesStart" | "pastMinutesEnd"
+  >
+) {
+  const { startDate, endDate, timeZone, pastMinutesStart, pastMinutesEnd } =
+    params;
+
+  // Construct the legacy format for validation
+  const pastMinutesRange =
+    pastMinutesStart !== undefined && pastMinutesEnd !== undefined
+      ? { start: Number(pastMinutesStart), end: Number(pastMinutesEnd) }
+      : undefined;
+
+  const date =
+    startDate && endDate && timeZone
+      ? { startDate, endDate, timeZone }
+      : undefined;
+
   // Sanitize inputs with Zod
-  const sanitized = validateTimeStatementParams({ date, pastMinutes });
+  const sanitized = validateTimeStatementParams({
+    date,
+    pastMinutesRange,
+  });
 
   if (sanitized.date) {
-    const { startDate, endDate, timezone, table } = sanitized.date;
+    const { startDate, endDate, timeZone } = sanitized.date;
     if (!startDate && !endDate) {
       return "";
     }
 
-    const col = (table ?? "events") === "events" ? "timestamp" : "session_end";
-
-    // Use SqlString.escape for date and timezone values
-    return `AND ${col} >= toTimeZone(
+    // Use SqlString.escape for date and timeZone values
+    return `AND timestamp >= toTimeZone(
       toStartOfDay(toDateTime(${SqlString.escape(
         startDate
-      )}, ${SqlString.escape(timezone)})),
+      )}, ${SqlString.escape(timeZone)})),
       'UTC'
       )
-      AND ${col} < if(
+      AND timestamp < if(
         toDate(${SqlString.escape(endDate)}) = toDate(now(), ${SqlString.escape(
-      timezone
-    )}),
+          timeZone
+        )}),
         now(),
         toTimeZone(
           toStartOfDay(toDateTime(${SqlString.escape(
             endDate
-          )}, ${SqlString.escape(timezone)})) + INTERVAL 1 DAY,
+          )}, ${SqlString.escape(timeZone)})) + INTERVAL 1 DAY,
           'UTC'
         )
       )`;
   }
-  if (sanitized.pastMinutes) {
-    // Use SqlString.escape for pastMinutes (it handles numbers)
-    return `AND timestamp > now() - interval ${SqlString.escape(
-      sanitized.pastMinutes
-    )} minute`;
+
+  // Handle specific range of past minutes - convert to exact timestamps for better performance
+  if (sanitized.pastMinutesRange) {
+    const { start, end } = sanitized.pastMinutesRange;
+
+    // Calculate exact timestamps in JavaScript to avoid runtime ClickHouse calculations
+    const now = new Date();
+    const startTimestamp = new Date(now.getTime() - start * 60 * 1000);
+    const endTimestamp = new Date(now.getTime() - end * 60 * 1000);
+
+    // Format as YYYY-MM-DD HH:MM:SS without milliseconds for ClickHouse
+    const startIso = startTimestamp
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
+    const endIso = endTimestamp.toISOString().slice(0, 19).replace("T", " ");
+
+    return `AND timestamp > toDateTime(${SqlString.escape(startIso)}) AND timestamp <= toDateTime(${SqlString.escape(endIso)})`;
   }
+
+  // If no valid time parameters were provided, return empty string
+  return "";
 }
 
 export async function processResults<T>(
@@ -64,7 +90,15 @@ export async function processResults<T>(
   const data: T[] = await results.json();
   for (const row of data) {
     for (const key in row) {
-      if (!isNaN(Number(row[key])) && row[key] !== "") {
+      // Only convert to number if the value is not null/undefined and is a valid number
+      if (
+        key !== "session_id" &&
+        key !== "user_id" &&
+        row[key] !== null &&
+        row[key] !== undefined &&
+        row[key] !== "" &&
+        !isNaN(Number(row[key]))
+      ) {
         row[key] = Number(row[key]) as any;
       }
     }
@@ -109,6 +143,19 @@ export const getSqlParam = (parameter: FilterParameter) => {
   }
   if (parameter === "dimensions") {
     return "concat(toString(screen_width), 'x', toString(screen_height))";
+  }
+  if (parameter === "city") {
+    return "concat(toString(region), '-', toString(city))";
+  }
+  if (parameter === "browser_version") {
+    return "concat(toString(browser), ' ', toString(browser_version))";
+  }
+  if (parameter === "operating_system_version") {
+    return `CASE 
+      WHEN concat(toString(operating_system), ' ', toString(operating_system_version)) = 'Windows 10' 
+      THEN 'Windows 10/11' 
+      ELSE concat(toString(operating_system), ' ', toString(operating_system_version)) 
+    END`;
   }
   return filterParamSchema.parse(parameter);
 };

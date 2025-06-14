@@ -33,17 +33,17 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
+  changeSiteBlockBots,
   changeSiteDomain,
   changeSitePublic,
   changeSiteSalt,
   deleteSite,
-  GetSitesResponse,
   SiteResponse,
   useGetSite,
-  useGetSites,
+  useGetSitesFromOrg,
 } from "@/api/admin/sites";
-import { ScriptBuilder } from "./ScriptBuilder";
 import { useUserOrganizations } from "../../api/admin/organizations";
+import { ScriptBuilder } from "./ScriptBuilder";
 
 export function SiteSettings({
   siteId,
@@ -61,14 +61,14 @@ export function SiteSettings({
   return <SiteSettingsInner siteMetadata={siteMetadata} trigger={trigger} />;
 }
 
-export function SiteSettingsInner({
+function SiteSettingsInner({
   siteMetadata,
   trigger,
 }: {
-  siteMetadata: SiteResponse | GetSitesResponse[number];
+  siteMetadata: SiteResponse;
   trigger?: React.ReactNode;
 }) {
-  const { refetch } = useGetSites();
+  const { refetch } = useGetSitesFromOrg(siteMetadata?.organizationId ?? "");
   const { data: userOrganizationsData } = useUserOrganizations();
   const disabled =
     !userOrganizationsData?.[0]?.role ||
@@ -81,6 +81,10 @@ export function SiteSettingsInner({
   const [isChangingPublic, setIsChangingPublic] = useState(false);
   const [isSalting, setIsSalting] = useState(siteMetadata.saltUserIds || false);
   const [isChangingSalt, setIsChangingSalt] = useState(false);
+  const [isBlockingBots, setIsBlockingBots] = useState(
+    siteMetadata.blockBots || false
+  );
+  const [isChangingBlockBots, setIsChangingBlockBots] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("script");
@@ -155,6 +159,22 @@ export function SiteSettingsInner({
       setIsSalting(!checked); // Revert UI state on error
     } finally {
       setIsChangingSalt(false);
+    }
+  };
+
+  const handleBlockBotsToggle = async (checked: boolean) => {
+    try {
+      setIsChangingBlockBots(true);
+      await changeSiteBlockBots(siteMetadata.siteId, checked);
+      setIsBlockingBots(checked);
+      toast.success(checked ? "Bot blocking enabled" : "Bot blocking disabled");
+      refetch();
+    } catch (error) {
+      console.error("Error changing bot blocking setting:", error);
+      toast.error("Failed to update bot blocking setting");
+      setIsBlockingBots(!checked); // Revert UI state on error
+    } finally {
+      setIsChangingBlockBots(false);
     }
   };
 
@@ -239,6 +259,28 @@ export function SiteSettingsInner({
               />
             </div>
 
+            {/* Bot Blocking Section */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label
+                  htmlFor="blockBots"
+                  className="text-sm font-medium text-foreground block"
+                >
+                  Block Bot Traffic
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  When enabled, traffic from known bots and crawlers will not be
+                  tracked
+                </p>
+              </div>
+              <Switch
+                id="blockBots"
+                checked={isBlockingBots}
+                disabled={isChangingBlockBots || disabled}
+                onCheckedChange={handleBlockBotsToggle}
+              />
+            </div>
+
             {/* Domain Settings Section */}
             <div className="space-y-3">
               <div>
@@ -252,7 +294,7 @@ export function SiteSettingsInner({
               <div className="flex space-x-2">
                 <Input
                   value={newDomain}
-                  onChange={(e) => setNewDomain(e.target.value)}
+                  onChange={(e) => setNewDomain(e.target.value.toLowerCase())}
                   placeholder="example.com"
                 />
                 <Button

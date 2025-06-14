@@ -29,11 +29,19 @@ services:
       - clickhouse-data:/var/lib/clickhouse
       - ./clickhouse_config:/etc/clickhouse-server/config.d
     environment:
-      - CLICKHOUSE_DB=analytics
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=frog
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8123/ping",
+        ]
       interval: 3s
       timeout: 5s
       retries: 5
@@ -44,9 +52,9 @@ services:
     image: postgres:17.4
     container_name: postgres
     environment:
-      POSTGRES_USER: frog
-      POSTGRES_PASSWORD: frog
-      POSTGRES_DB: analytics
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -56,18 +64,18 @@ services:
   backend:
     container_name: backend
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     environment:
       - NODE_ENV=production
       - CLICKHOUSE_HOST=http://clickhouse:8123
-      - CLICKHOUSE_DB=analytics
-      - CLICKHOUSE_PASSWORD=frog
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-frog}
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
-      - POSTGRES_DB=analytics
-      - POSTGRES_USER=frog
-      - POSTGRES_PASSWORD=frog
+      - POSTGRES_DB=${POSTGRES_DB:-analytics}
+      - POSTGRES_USER=${POSTGRES_USER:-frog}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-frog}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BASE_URL=${BASE_URL}
       - DISABLE_SIGNUP=${DISABLE_SIGNUP}
@@ -79,6 +87,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - RESEND_API_KEY=${RESEND_API_KEY}
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -91,15 +100,17 @@ services:
   client:
     container_name: client
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: client/Dockerfile
       args:
         NEXT_PUBLIC_BACKEND_URL: ${BASE_URL}
+        NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
         NEXT_PUBLIC_CLOUD: ${CLOUD}
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_DEMO=true
       - NEXT_PUBLIC_BACKEND_URL=${BASE_URL}
+      - NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP}
       - NEXT_PUBLIC_CLOUD=${CLOUD}
     depends_on:
       - backend
@@ -110,5 +121,5 @@ services:
 volumes:
   clickhouse-data:
   postgres-data:
-  caddy_data:     # Persistent volume for Caddy's certificates and state
-  caddy_config:   # Persistent volume for Caddy's configuration cache (optional but good practice)
+  caddy_data: # Persistent volume for Caddy's certificates and state
+  caddy_config: # Persistent volume for Caddy's configuration cache (optional but good practice)

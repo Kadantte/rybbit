@@ -4,7 +4,7 @@
  */
 export const DISABLE_ORIGIN_CHECK = process.env.DISABLE_ORIGIN_CHECK === "true";
 
-export const searchDomains = [
+const searchDomains = [
   // Google and variants
   "google.com",
   "google.",
@@ -54,9 +54,17 @@ export const searchDomains = [
   "sogou.com",
   "goo.ne.jp",
   "rambler.ru",
+
+  // AI-powered search engines
+  "perplexity.ai",
+  "you.com",
+  "phind.com",
+  "andi.com",
+  "neeva.com",
+  "kagi.com",
 ];
 
-export const socialDomains = [
+const socialDomains = [
   // Major social networks and their variants
   "facebook.com",
   "fb.com",
@@ -106,6 +114,33 @@ export const socialDomains = [
   "news.ycombinator.com",
   "hn.algolia.com",
 
+  // Newer/emerging platforms
+  "bluesky.app",
+  "bsky.app",
+  "post.news",
+  "truth.social",
+  "truthsocial.com",
+  "gettr.com",
+  "parler.com",
+  "gab.com",
+  "minds.com",
+  "diaspora.",
+  "lemmy.",
+  "kbin.social",
+  "bereal.com",
+  "vsco.co",
+  "flickr.com",
+  "flic.kr",
+  "500px.com",
+  "deviantart.com",
+  "behance.net",
+  "dribbble.com",
+
+  // Professional networks
+  "xing.com",
+  "viadeo.com",
+  "meetup.com",
+
   // Regional social platforms
   "wechat.com",
   "weixin.qq.com",
@@ -114,9 +149,13 @@ export const socialDomains = [
   "weibo.com",
   "weibo.cn",
   "line.me",
+  "kakaotalk.com",
+  "viber.com",
+  "ok.ru",
+  "odnoklassniki.ru",
 ];
 
-export const videoDomains = [
+const videoDomains = [
   // Major video platforms
   "youtube.com",
   "youtu.be",
@@ -129,6 +168,7 @@ export const videoDomains = [
   "disneyplus.com",
   "hulu.com",
   "hbomax.com",
+  "max.com",
   "peacocktv.com",
   "primevideo.com",
   "amazon.com/prime-video",
@@ -138,6 +178,8 @@ export const videoDomains = [
   "funimation.com",
   "curiositystream.com",
   "mubi.com",
+  "appletv.com",
+  "tv.apple.com",
 
   // Video sharing
   "tiktok.com",
@@ -166,6 +208,7 @@ export const videoDomains = [
   "youtube.com/live",
   "kick.com",
   "caffeine.tv",
+  "mixer.com",
 
   // Regional platforms
   "bilibili.com",
@@ -174,9 +217,15 @@ export const videoDomains = [
   "youku.com",
   "tudou.com",
   "iqiyi.com",
+
+  // Short-form video
+  "vine.co",
+  "byte.co",
+  "triller.co",
+  "likee.video",
 ];
 
-export const shoppingDomains = [
+const shoppingDomains = [
   // Major marketplaces
   "amazon.com",
   "amazon.",
@@ -201,6 +250,11 @@ export const shoppingDomains = [
   "net-a-porter.com",
   "farfetch.com",
   "fashionnova.com",
+  "shein.com",
+  "romwe.com",
+  "zaful.com",
+  "boohoo.com",
+  "prettylittlething.com",
 
   // Electronics
   "bestbuy.com",
@@ -208,6 +262,8 @@ export const shoppingDomains = [
   "bhphotovideo.com",
   "apple.com/shop",
   "samsung.com/shop",
+  "microcenter.com",
+  "tigerdirect.com",
 
   // Home and furniture
   "wayfair.com",
@@ -215,6 +271,9 @@ export const shoppingDomains = [
   "homedepot.com",
   "lowes.com",
   "overstock.com",
+  "cb2.com",
+  "crateandbarrel.com",
+  "westelm.com",
 
   // Regional marketplaces
   "taobao.com",
@@ -227,6 +286,9 @@ export const shoppingDomains = [
   "allegro.pl",
   "coupang.com",
   "gmarket.co.kr",
+  "shopee.com",
+  "tokopedia.com",
+  "bukalapak.com",
 
   // Grocery and food
   "instacart.com",
@@ -237,10 +299,13 @@ export const shoppingDomains = [
   "ubereats.com",
   "grubhub.com",
   "deliveroo.com",
+  "postmates.com",
+  "seamless.com",
+  "foodpanda.com",
 ];
 
 // Define sources types
-export const searchSources = [
+const searchSources = [
   // Major search engines
   "google",
   "bing",
@@ -275,8 +340,17 @@ export const searchSources = [
   "sogou",
   "goo",
   "rambler",
+
+  // AI-powered search engines
+  "perplexity",
+  "you",
+  "phind",
+  "andi",
+  "neeva",
+  "kagi",
 ];
-export const socialSources = [
+
+const socialSources = [
   // Major social platforms
   "facebook",
   "twitter",
@@ -313,6 +387,31 @@ export const socialSources = [
   "tw",
   "yt",
 
+  // Newer/emerging platforms
+  "bluesky",
+  "bsky",
+  "post",
+  "truth social",
+  "gettr",
+  "parler",
+  "gab",
+  "minds",
+  "diaspora",
+  "lemmy",
+  "kbin",
+  "bereal",
+  "vsco",
+  "flickr",
+  "500px",
+  "deviantart",
+  "behance",
+  "dribbble",
+
+  // Professional networks
+  "xing",
+  "viadeo",
+  "meetup",
+
   // Regional platforms
   "wechat",
   "weixin",
@@ -321,8 +420,13 @@ export const socialSources = [
   "weibo",
   "line",
   "kakao",
+  "kakaotalk",
+  "viber",
+  "ok",
+  "odnoklassniki",
 ];
-export const videoSources = [
+
+const videoSources = [
   // Major video platforms
   "youtube",
   "vimeo",
@@ -335,6 +439,7 @@ export const videoSources = [
   "netflix",
   "hulu",
   "hbomax",
+  "max",
   "peacock",
   "prime video",
   "paramount+",
@@ -343,6 +448,8 @@ export const videoSources = [
   "funimation",
   "curiositystream",
   "mubi",
+  "apple tv",
+  "appletv",
 
   // Video sharing
   "vevo",
@@ -366,6 +473,7 @@ export const videoSources = [
   // Live streaming
   "kick",
   "caffeine",
+  "mixer",
 
   // Regional platforms
   "bilibili",
@@ -374,8 +482,15 @@ export const videoSources = [
   "youku",
   "tudou",
   "iqiyi",
+
+  // Short-form video
+  "vine",
+  "byte",
+  "triller",
+  "likee",
 ];
-export const shoppingSources = [
+
+const shoppingSources = [
   // Major marketplaces
   "amazon",
   "ebay",
@@ -400,6 +515,11 @@ export const shoppingSources = [
   "net-a-porter",
   "farfetch",
   "fashionnova",
+  "shein",
+  "romwe",
+  "zaful",
+  "boohoo",
+  "prettylittlething",
 
   // Electronics
   "bestbuy",
@@ -407,6 +527,8 @@ export const shoppingSources = [
   "bhphotovideo",
   "apple",
   "samsung",
+  "microcenter",
+  "tigerdirect",
 
   // Home and furniture
   "wayfair",
@@ -414,6 +536,9 @@ export const shoppingSources = [
   "homedepot",
   "lowes",
   "overstock",
+  "cb2",
+  "crateandbarrel",
+  "westelm",
 
   // Regional marketplaces
   "taobao",
@@ -426,6 +551,9 @@ export const shoppingSources = [
   "allegro",
   "coupang",
   "gmarket",
+  "shopee",
+  "tokopedia",
+  "bukalapak",
 
   // Grocery and food
   "instacart",
@@ -436,8 +564,12 @@ export const shoppingSources = [
   "ubereats",
   "grubhub",
   "deliveroo",
+  "postmates",
+  "seamless",
+  "foodpanda",
 ];
-export const emailSources = [
+
+const emailSources = [
   "email",
   "e_mail",
   "e-mail",
@@ -466,7 +598,8 @@ export const emailSources = [
   "blast",
   "campaign",
 ];
-export const smsSources = [
+
+const smsSources = [
   "sms",
   "text",
   "twilio",
@@ -478,7 +611,7 @@ export const smsSources = [
 ];
 
 // Medium types
-export const socialMediums = [
+const socialMediums = [
   "sm",
   "social-media",
   "social-network",
@@ -498,7 +631,7 @@ export const socialMediums = [
   "social_post",
 ];
 
-export const videoMediums = [
+const videoMediums = [
   "video",
   "youtube",
   "vimeo",
@@ -521,7 +654,7 @@ export const videoMediums = [
   "post-roll",
 ];
 
-export const displayMediums = [
+const displayMediums = [
   "display",
   "interstitial",
   "banner",
@@ -544,7 +677,7 @@ export const displayMediums = [
   "impression",
 ];
 
-export const affiliateMediums = [
+const affiliateMediums = [
   "affiliate",
   "aff",
   "partner",
@@ -557,7 +690,7 @@ export const affiliateMediums = [
   "lead-generation",
 ];
 
-export const referralMediums = [
+const referralMediums = [
   "referral",
   "link",
   "app",
@@ -575,7 +708,7 @@ export const referralMediums = [
   "vanity-url",
 ];
 
-export const emailMediums = [
+const emailMediums = [
   "email",
   "e_mail",
   "e-mail",
@@ -593,7 +726,7 @@ export const emailMediums = [
   "news",
 ];
 
-export const pushMediums = [
+const pushMediums = [
   "push",
   "notification",
   "mobile",
@@ -607,7 +740,7 @@ export const pushMediums = [
   "install",
 ];
 
-export const audioMediums = [
+const audioMediums = [
   "audio",
   "podcast",
   "radio",
@@ -625,6 +758,80 @@ export const audioMediums = [
   "spot",
   "jingle",
   "commercial",
+];
+
+// New medium categories for modern marketing
+const influencerMediums = [
+  "influencer",
+  "creator",
+  "sponsored",
+  "collaboration",
+  "brand-ambassador",
+  "micro-influencer",
+  "macro-influencer",
+  "nano-influencer",
+  "ugc-creator",
+  "content-creator",
+  "partnership",
+  "endorsement",
+];
+
+const cpcMediums = [
+  "cpc",
+  "ppc",
+  "paid-search",
+  "search-ads",
+  "google-ads",
+  "bing-ads",
+  "yahoo-ads",
+  "adwords",
+  "sem",
+  "paid-click",
+];
+
+const cpmMediums = [
+  "cpm",
+  "display-ads",
+  "banner-ads",
+  "impression",
+  "programmatic",
+  "rtb",
+  "dsp",
+  "demand-side",
+  "supply-side",
+  "ad-exchange",
+];
+
+const contentMediums = [
+  "content",
+  "blog",
+  "article",
+  "guest-post",
+  "editorial",
+  "pr",
+  "press-release",
+  "news",
+  "publication",
+  "magazine",
+  "journal",
+  "whitepaper",
+  "case-study",
+  "resource",
+];
+
+const eventMediums = [
+  "event",
+  "conference",
+  "webinar",
+  "workshop",
+  "seminar",
+  "meetup",
+  "trade-show",
+  "expo",
+  "summit",
+  "networking",
+  "live-event",
+  "virtual-event",
 ];
 
 // Mobile App IDs (reverse DNS format)
@@ -680,7 +887,7 @@ export const socialAppIds = [
   // WhatsApp
   "com.whatsapp",
 
-  // Thread
+  // Threads
   "com.instagram.barcelona",
   "com.threads",
 
@@ -690,9 +897,17 @@ export const socialAppIds = [
   // Mastodon
   "org.joinmastodon.android",
 
+  // BeReal
+  "com.bereal.ft",
+
+  // VSCO
+  "com.vsco.cam",
+
   // Other social
   "com.slack",
   "im.vector.app",
+  "com.nextdoor",
+  "com.clubhouse.app",
 ];
 
 export const videoAppIds = [
@@ -811,16 +1026,167 @@ export const shoppingAppIds = [
   // AliExpress
   "com.alibaba.aliexpresshd",
 
+  // Shein
+  "com.zzkko",
+
   // Other shopping
   "com.wayfair.wayfair",
   "com.newegg.app",
   "com.bestbuy.android",
   "com.ikea.app",
   "com.homedepot",
+  "com.lowes.android",
+  "com.overstock",
+];
+
+// News and content app IDs
+export const newsAppIds = [
+  // Major news apps
+  "com.cnn.mobile.android.phone",
+  "com.foxnews.android",
+  "com.nytimes.android",
+  "com.washingtonpost.rainbow",
+  "com.wsj.reader",
+  "com.usatoday.android.news",
+  "com.bbc.news",
+  "com.reuters.android",
+  "com.ap.mobile",
+  "com.nbcuni.nbc",
+
+  // Tech news
+  "com.aol.mobile.techcrunch",
+  "com.theverge.verge",
+  "com.wired.android",
+  "com.arstechnica.app",
+  "com.engadget.android",
+
+  // Aggregators
+  "com.google.android.apps.magazines",
+  "flipboard.app",
+  "com.apple.news",
+  "com.microsoft.amp.apps.bingnews",
+];
+
+// Productivity app IDs
+export const productivityAppIds = [
+  // Microsoft Office
+  "com.microsoft.office.word",
+  "com.microsoft.office.excel",
+  "com.microsoft.office.powerpoint",
+  "com.microsoft.teams",
+
+  // Google Workspace
+  "com.google.android.apps.docs",
+  "com.google.android.apps.docs.editors.sheets",
+  "com.google.android.apps.docs.editors.slides",
+  "com.google.android.apps.meetings",
+
+  // Note-taking
+  "com.evernote",
+  "us.zoom.videomeetings",
+  "com.notion.id",
+  "md.obsidian",
+  "com.dropbox.android",
 ];
 
 // Categorize mobile apps by their bundle ID/package name - helper function
 export function isMobileAppId(source: string): boolean {
   // Check for common app identifier patterns (com.company.app, etc.)
   return /^[a-z0-9_]+(\.([a-z0-9_]+))+$/.test(source);
+}
+
+// Helper function to categorize traffic source type
+export function getSourceType(source: string): string {
+  const lowerSource = source.toLowerCase();
+
+  // Check domains first
+  if (searchDomains.some((domain) => lowerSource.includes(domain)))
+    return "search";
+  if (socialDomains.some((domain) => lowerSource.includes(domain)))
+    return "social";
+  if (videoDomains.some((domain) => lowerSource.includes(domain)))
+    return "video";
+  if (shoppingDomains.some((domain) => lowerSource.includes(domain)))
+    return "shopping";
+
+  // Check source names
+  if (searchSources.includes(lowerSource)) return "search";
+  if (socialSources.includes(lowerSource)) return "social";
+  if (videoSources.includes(lowerSource)) return "video";
+  if (shoppingSources.includes(lowerSource)) return "shopping";
+  if (emailSources.includes(lowerSource)) return "email";
+  if (smsSources.includes(lowerSource)) return "sms";
+
+  // Check mobile app IDs
+  if (isMobileAppId(source)) {
+    if (socialAppIds.includes(source)) return "social";
+    if (videoAppIds.includes(source)) return "video";
+    if (searchAppIds.includes(source)) return "search";
+    if (emailAppIds.includes(source)) return "email";
+    if (shoppingAppIds.includes(source)) return "shopping";
+    if (newsAppIds.includes(source)) return "news";
+    if (productivityAppIds.includes(source)) return "productivity";
+    return "mobile-app";
+  }
+
+  return "direct";
+}
+
+// Helper function to categorize medium type
+export function getMediumType(medium: string): string {
+  const lowerMedium = medium.toLowerCase();
+
+  if (socialMediums.includes(lowerMedium)) return "social";
+  if (videoMediums.includes(lowerMedium)) return "video";
+  if (displayMediums.includes(lowerMedium)) return "display";
+  if (affiliateMediums.includes(lowerMedium)) return "affiliate";
+  if (referralMediums.includes(lowerMedium)) return "referral";
+  if (emailMediums.includes(lowerMedium)) return "email";
+  if (pushMediums.includes(lowerMedium)) return "push";
+  if (audioMediums.includes(lowerMedium)) return "audio";
+  if (influencerMediums.includes(lowerMedium)) return "influencer";
+  if (cpcMediums.includes(lowerMedium)) return "cpc";
+  if (cpmMediums.includes(lowerMedium)) return "cpm";
+  if (contentMediums.includes(lowerMedium)) return "content";
+  if (eventMediums.includes(lowerMedium)) return "event";
+
+  return "organic";
+}
+
+// Helper function to check if traffic is paid
+export function isPaidTraffic(medium: string, source: string): boolean {
+  const lowerMedium = medium.toLowerCase();
+  const lowerSource = source.toLowerCase();
+
+  // Paid medium indicators
+  const paidMediums = [
+    ...cpcMediums,
+    ...cpmMediums,
+    ...displayMediums,
+    "paid",
+    "ad",
+    "ads",
+    "advertising",
+    "sponsored",
+    "promotion",
+  ];
+
+  // Paid source indicators
+  const paidSources = [
+    "google ads",
+    "googleads",
+    "bing ads",
+    "facebook ads",
+    "instagram ads",
+    "twitter ads",
+    "linkedin ads",
+    "tiktok ads",
+    "youtube ads",
+    "pinterest ads",
+  ];
+
+  return (
+    paidMediums.some((pm) => lowerMedium.includes(pm)) ||
+    paidSources.some((ps) => lowerSource.includes(ps))
+  );
 }

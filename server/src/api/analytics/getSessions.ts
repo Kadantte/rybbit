@@ -1,11 +1,12 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import {
   getFilterStatement,
   getTimeStatement,
   processResults,
 } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
+import { FilterParams } from "@rybbit/shared";
 
 export type GetSessionsResponse = {
   session_id: string;
@@ -37,21 +38,17 @@ export interface GetSessionsRequest {
   Params: {
     site: string;
   };
-  Querystring: {
-    startDate: string;
-    endDate: string;
-    timezone: string;
-    filters: string;
+  Querystring: FilterParams<{
     page: number;
     userId?: string;
-  };
+  }>;
 }
 
 export async function getSessions(
   req: FastifyRequest<GetSessionsRequest>,
   res: FastifyReply
 ) {
-  const { startDate, endDate, timezone, filters, page, userId } = req.query;
+  const { filters, page, userId } = req.query;
   const site = req.params.site;
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -59,9 +56,7 @@ export async function getSessions(
   }
 
   const filterStatement = getFilterStatement(filters);
-  const timeStatement = getTimeStatement({
-    date: { startDate, endDate, timezone },
-  });
+  const timeStatement = getTimeStatement(req.query);
 
   const query = `
   WITH AggregatedSessions AS (

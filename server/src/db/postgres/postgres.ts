@@ -13,6 +13,7 @@ const client = postgres({
   username: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   onnotice: () => {},
+  max: 20,
 });
 
 // Create drizzle ORM instance

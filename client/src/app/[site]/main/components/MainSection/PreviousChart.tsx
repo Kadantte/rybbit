@@ -3,13 +3,22 @@ import { nivoTheme } from "@/lib/nivo";
 import { useStore } from "@/lib/store";
 import { ResponsiveLine } from "@nivo/line";
 import { DateTime } from "luxon";
-import { useMemo } from "react";
-import { APIResponse } from "../../../../../api/types";
 import { GetOverviewBucketedResponse } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { APIResponse } from "../../../../../api/types";
 import { Time } from "../../../../../components/DateSelector/types";
+import { TimeBucket } from "@rybbit/shared";
 
-const getMin = (time: Time) => {
-  if (time.mode === "day") {
+const getMin = (time: Time, bucket: TimeBucket) => {
+  if (time.mode === "past-minutes") {
+    if (bucket === "hour") {
+      return DateTime.now()
+        .setZone("UTC")
+        .minus({ minutes: time.pastMinutesStart * 2 })
+        .startOf("hour")
+        .toJSDate();
+    }
+    undefined;
+  } else if (time.mode === "day") {
     const dayDate = DateTime.fromISO(time.day).startOf("day");
     return dayDate.toJSDate();
   } else if (time.mode === "week") {
@@ -21,10 +30,6 @@ const getMin = (time: Time) => {
   } else if (time.mode === "year") {
     const yearDate = DateTime.fromISO(time.year).startOf("year");
     return yearDate.toJSDate();
-  } else if (time.mode === "range") {
-    const startDate = DateTime.fromISO(time.startDate).startOf("day");
-    const endDate = DateTime.fromISO(time.endDate).startOf("day");
-    return startDate.toJSDate();
   }
   return undefined;
 };
@@ -36,14 +41,28 @@ export function PreviousChart({
   data: APIResponse<GetOverviewBucketedResponse> | undefined;
   max: number;
 }) {
-  const { previousTime: time, selectedStat } = useStore();
+  const { previousTime: time, selectedStat, bucket } = useStore();
 
-  const formattedData = data?.data?.map((e) => ({
-    x: DateTime.fromSQL(e.time).toUTC().toFormat("yyyy-MM-dd HH:mm:ss"),
-    y: e[selectedStat],
-  }));
+  const size = (data?.data.length ?? 0 / 2) + 1;
+  const formattedData = data?.data
+    ?.map((e) => {
+      const timestamp = DateTime.fromSQL(e.time).toUTC();
+      return {
+        x: timestamp.toFormat("yyyy-MM-dd HH:mm:ss"),
+        y: e[selectedStat],
+      };
+    })
+    .slice(0, size);
 
-  const min = useMemo(() => getMin(time), [data]);
+  const min = getMin(time, bucket);
+  const maxPastMinutes =
+    time.mode === "past-minutes" && bucket === "hour"
+      ? DateTime.now()
+          .setZone("UTC")
+          .minus({ minutes: time.pastMinutesStart })
+          .startOf("hour")
+          .toJSDate()
+      : undefined;
 
   return (
     <ResponsiveLine
@@ -54,13 +73,14 @@ export function PreviousChart({
         },
       ]}
       theme={nivoTheme}
-      margin={{ top: 10, right: 10, bottom: 25, left: 35 }}
+      margin={{ top: 10, right: 15, bottom: 25, left: 35 }}
       xScale={{
         type: "time",
         format: "%Y-%m-%d %H:%M:%S",
         precision: "second",
         useUTC: true,
         min,
+        max: maxPastMinutes,
       }}
       yScale={{
         type: "linear",
@@ -81,15 +101,21 @@ export function PreviousChart({
         truncateTickAt: 0,
         tickValues: 0,
         format: (value) => {
-          if (time.mode === "day") {
-            return DateTime.fromJSDate(value).toFormat("ha");
+          const localTime = DateTime.fromJSDate(value).toLocal();
+
+          if (
+            (time.mode === "past-minutes" && time.pastMinutesStart >= 1440) ||
+            time.mode === "day"
+          ) {
+            return localTime.toFormat("ha");
           } else if (time.mode === "range") {
-            return DateTime.fromJSDate(value).toFormat("MMM d");
+            return localTime.toFormat("MMM d");
           } else if (time.mode === "week") {
-            return DateTime.fromJSDate(value).toFormat("MMM d");
+            return localTime.toFormat("MMM d");
           } else if (time.mode === "month") {
-            return DateTime.fromJSDate(value).toFormat("MMM d");
+            return localTime.toFormat("MMM d");
           }
+          return "";
         },
       }}
       axisLeft={{

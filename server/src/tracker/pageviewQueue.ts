@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import clickhouse from "../db/clickhouse/clickhouse.js";
+import { clickhouse } from "../db/clickhouse/clickhouse.js";
 import { getLocation } from "../db/geolocation/geolocation.js";
 import { TrackingPayload } from "../types.js";
 import { getDeviceType } from "../utils.js";
@@ -16,6 +16,12 @@ type TotalPayload = TrackingPayload & {
   type?: string;
   event_name?: string;
   properties?: string;
+  // Performance metrics
+  lcp?: number;
+  cls?: number;
+  inp?: number;
+  fcp?: number;
+  ttfb?: number;
 };
 
 const getParsedProperties = (properties: string | undefined) => {
@@ -29,7 +35,7 @@ const getParsedProperties = (properties: string | undefined) => {
 class PageviewQueue {
   private queue: TotalPayload[] = [];
   private batchSize = 5000;
-  private interval = 10000; // 10 seconds
+  private interval = 10000;
   private processing = false;
 
   constructor() {
@@ -114,6 +120,12 @@ class PageviewQueue {
         event_name: pv.event_name || "",
         props: getParsedProperties(pv.properties),
         url_parameters: allUrlParams,
+        // Performance metrics (only included for performance events)
+        lcp: pv.lcp || null,
+        cls: pv.cls || null,
+        inp: pv.inp || null,
+        fcp: pv.fcp || null,
+        ttfb: pv.ttfb || null,
       };
     });
 

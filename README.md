@@ -10,9 +10,8 @@
     <a href="https://demo.rybbit.io/1" target="_blank">Demo</a> |
     <a href="https://rybbit.io/docs" target="_blank">Documentation</a> |
     <a href="https://discord.gg/DEhGb4hYBj" target="_blank">Discord</a> |
-    <a href="https://github.com/rybbit-io/rybbit?tab=AGPL-3.0-1-ov-file" target="_blank">License (AGPL-3)</a>
-</p>
-
+    <a href="https://github.com/rybbit-io/rybbit?tab=AGPL-3.0-1-ov-file" target="_blank">License (AGPL-3)</a> |
+    <a href="https://github.com/rybbit-io/rybbit/blob/master/CONTRIBUTE.md" target="_blank">Contribute</a>
 </p>
 
 <a href="https://rybbit.io/" target="_blank">Rybbit</a> is the modern open source and privacy friendly alternative to Google Analytics. It takes only a couple minutes to setup and is super intuitive to use.
@@ -27,12 +26,12 @@
 
 There are two ways to start using Rybbit:
 
-| Option                                                  | Description                                                            |
-| ------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **[Hosted Service](https://rybbit.io)**                 | Sign up for our cloud-hosted solution - the fastest way to get started |
-| **[Self-Hosting](https://rybbit.io/docs/self-hosting)** | Deploy and manage Rybbit on your own VPS for complete control          |
+| Option                                                  | Description                                                   |
+| ------------------------------------------------------- | ------------------------------------------------------------- |
+| **[Hosted Service](https://rybbit.io)**                 | Free tier available - the fastest way to get started          |
+| **[Self-Hosting](https://rybbit.io/docs/self-hosting)** | Deploy and manage Rybbit on your own VPS for complete control |
 
-📚 Explore our [comprehensive documentation](https://rybbit.io/docs) to learn more about installation, configuration, and usage.
+📚 Explore our [documentation](https://rybbit.io/docs) to learn more about installation, configuration, and usage.
 
 <hr>
 

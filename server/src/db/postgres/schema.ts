@@ -30,8 +30,6 @@ export const user = pgTable(
     stripeCustomerId: text(),
     overMonthlyLimit: boolean().default(false),
     monthlyEventCount: integer().default(0),
-    // can view all sites. for internal use only.
-    godMode: boolean().default(false),
   },
   (table) => [
     unique("user_username_unique").on(table.username),
@@ -54,7 +52,7 @@ export const sites = pgTable(
   {
     siteId: serial("site_id").primaryKey().notNull(),
     name: text("name").notNull(),
-    domain: text("domain").notNull().unique(),
+    domain: text("domain").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
     createdBy: text("created_by")
@@ -63,6 +61,7 @@ export const sites = pgTable(
     organizationId: text("organization_id").references(() => organization.id),
     public: boolean().default(false),
     saltUserIds: boolean().default(false),
+    blockBots: boolean().default(true).notNull(),
   },
   (table) => [
     foreignKey({
@@ -157,6 +156,9 @@ export const organization = pgTable(
     logo: text(),
     createdAt: timestamp({ mode: "string" }).notNull(),
     metadata: text(),
+    stripeCustomerId: text(),
+    monthlyEventCount: integer().default(0),
+    overMonthlyLimit: boolean().default(false),
   },
   (table) => [unique("organization_slug_unique").on(table.slug)]
 );

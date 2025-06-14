@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { CodeSnippet } from "@/components/CodeSnippet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { BACKEND_URL } from "@/lib/const";
 import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
 
 interface ScriptBuilderProps {
   siteId: number;
@@ -15,9 +14,11 @@ interface ScriptBuilderProps {
 export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
   // Script configuration options
   const [debounceValue, setDebounceValue] = useState(500);
+  const [autoTrackPageview, setAutoTrackPageview] = useState(true);
   const [autoTrack, setAutoTrack] = useState(true);
   const [trackQuery, setTrackQuery] = useState(true);
   const [trackOutbound, setTrackOutbound] = useState(true);
+  const [webVitals, setWebVitals] = useState(false);
   const [skipPatterns, setSkipPatterns] = useState<string[]>([]);
   const [skipPatternsText, setSkipPatternsText] = useState("");
   const [maskPatterns, setMaskPatterns] = useState<string[]>([]);
@@ -95,16 +96,16 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
     data-debounce="${debounceValue}"`
       : ""
   }${
+    !autoTrackPageview
+      ? `
+  data-auto-track-pageview="false"`
+      : ""
+  }${
     !autoTrack
       ? `
-    data-track-spa="false"`
+  data-track-spa="false"`
       : ""
-  }${
-    !trackQuery
-      ? `
-    data-track-query="false"`
-      : ""
-  }${
+  }${!trackQuery ? `data-track-query="false"` : ""}${
     !trackOutbound
       ? `
     data-track-outbound="false"`
@@ -118,6 +119,11 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
     maskPatterns.length > 0
       ? `
     data-mask-patterns='${JSON.stringify(maskPatterns)}'`
+      : ""
+  }${
+    webVitals
+      ? `
+    data-web-vitals="true"`
       : ""
   }
     defer
@@ -138,6 +144,28 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
 
         {/* Script Options Section */}
         <div className="space-y-4">
+          {/* Auto Track Initial Pageview Option */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label
+                  htmlFor="autoTrackPageview"
+                  className="text-sm font-medium text-foreground block"
+                >
+                  Automatically track initial pageview
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Track the first pageview when the script loads
+                </p>
+              </div>
+              <Switch
+                id="autoTrackPageview"
+                checked={autoTrackPageview}
+                onCheckedChange={setAutoTrackPageview}
+              />
+            </div>
+          </div>
+
           {/* Auto Track (SPA) Option */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -205,6 +233,29 @@ export function ScriptBuilder({ siteId }: ScriptBuilderProps) {
               />
             </div>
           </div> */}
+
+          {/* Web Vitals Option */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label
+                  htmlFor="webVitals"
+                  className="text-sm font-medium text-foreground block"
+                >
+                  Enable Web Vitals performance metrics
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Collect Core Web Vitals (LCP, CLS, INP) and additional metrics
+                  (FCP, TTFB)
+                </p>
+              </div>
+              <Switch
+                id="webVitals"
+                checked={webVitals}
+                onCheckedChange={setWebVitals}
+              />
+            </div>
+          </div>
 
           {/* Skip Patterns Option */}
           <div className="space-y-2">

@@ -1,16 +1,17 @@
 "use client";
 import { Card, CardContent, CardLoader } from "@/components/ui/card";
-import { BucketSelection } from "./BucketSelection";
+import { Tilt_Warp } from "next/font/google";
+import Image from "next/image";
+import Link from "next/link";
+import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
+import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
+import { authClient } from "../../../../../lib/auth";
+import { useStore } from "../../../../../lib/store";
+import { cn } from "../../../../../lib/utils";
+import { BucketSelection } from "../../../../../components/BucketSelection";
 import { Chart } from "./Chart";
 import { Overview } from "./Overview";
 import { PreviousChart } from "./PreviousChart";
-import { useStore } from "../../../../../lib/store";
-import { useGetOverviewBucketed } from "../../../../../api/analytics/useGetOverviewBucketed";
-import { useGetOverview } from "../../../../../api/analytics/useGetOverview";
-import { Tilt_Warp } from "next/font/google";
-import Link from "next/link";
-import Image from "next/image";
-import { authClient } from "../../../../../lib/auth";
 
 const SELECTED_STAT_MAP = {
   pageviews: "Pageviews",
@@ -31,12 +32,23 @@ export function MainSection() {
 
   const { selectedStat, time, site, bucket } = useStore();
 
-  const { data, isFetching, error } = useGetOverviewBucketed({ site, bucket });
+  // Current period data
+  const { data, isFetching, error } = useGetOverviewBucketed({
+    site,
+    bucket,
+  });
+
+  // Previous period data
   const {
     data: previousData,
     isFetching: isPreviousFetching,
     error: previousError,
-  } = useGetOverviewBucketed({ periodTime: "previous", site, bucket });
+  } = useGetOverviewBucketed({
+    periodTime: "previous",
+    site,
+    bucket,
+  });
+
   const { isFetching: isOverviewFetching } = useGetOverview({ site });
   const { isFetching: isOverviewFetchingPrevious } = useGetOverview({
     site,
@@ -44,8 +56,8 @@ export function MainSection() {
   });
 
   const maxOfDataAndPreviousData = Math.max(
-    Math.max(...(data?.data?.map((d) => d[selectedStat]) ?? [])),
-    Math.max(...(previousData?.data?.map((d) => d[selectedStat]) ?? []))
+    Math.max(...(data?.data?.map((d: any) => d[selectedStat]) ?? [])),
+    Math.max(...(previousData?.data?.map((d: any) => d[selectedStat]) ?? []))
   );
 
   return (
@@ -63,7 +75,10 @@ export function MainSection() {
             <div className="flex items-center space-x-4">
               <Link
                 href={session.data ? "/" : "https://rybbit.io"}
-                className={`text-lg font-semibold flex items-center gap-1.5 ${tilt_wrap.className} opacity-75`}
+                className={cn(
+                  "text-lg font-semibold flex items-center gap-1.5 opacity-75",
+                  tilt_wrap.className
+                )}
               >
                 <Image src="/rybbit.png" alt="Rybbit" width={20} height={20} />
                 rybbit.io

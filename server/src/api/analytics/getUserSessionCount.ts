@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import clickhouse from "../../db/clickhouse/clickhouse.js";
+import { clickhouse } from "../../db/clickhouse/clickhouse.js";
 import { processResults } from "./utils.js";
 import { getUserHasAccessToSitePublic } from "../../lib/auth-utils.js";
 import SqlString from "sqlstring";
@@ -10,7 +10,7 @@ export interface GetUserSessionCountRequest {
   };
   Querystring: {
     userId?: string;
-    timezone?: string;
+    timeZone?: string;
   };
 }
 
@@ -24,7 +24,7 @@ export async function getUserSessionCount(
   res: FastifyReply
 ) {
   const { site } = req.params;
-  const { userId, timezone = "UTC" } = req.query;
+  const { userId, timeZone = "UTC" } = req.query;
 
   const userHasAccessToSite = await getUserHasAccessToSitePublic(req, site);
   if (!userHasAccessToSite) {
@@ -37,7 +37,7 @@ export async function getUserSessionCount(
 
   const query = `
     SELECT
-      toDate(timestamp, ${SqlString.escape(timezone)}) as date,
+      toDate(timestamp, ${SqlString.escape(timeZone)}) as date,
       count(DISTINCT session_id) as sessions
     FROM events
     WHERE
@@ -57,9 +57,8 @@ export async function getUserSessionCount(
       },
     });
 
-    const data = await processResults<GetUserSessionCountResponse[number]>(
-      result
-    );
+    const data =
+      await processResults<GetUserSessionCountResponse[number]>(result);
 
     return res.send({
       data,

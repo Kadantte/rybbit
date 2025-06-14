@@ -1,10 +1,11 @@
+import { Filter, TimeBucket } from "@rybbit/shared";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect } from "react";
 import { Time } from "../components/DateSelector/types";
-import { Filter, StatType, TimeBucket, useStore } from "./store";
+import { StatType, useStore } from "./store";
 
 // Serialize store state to URL parameters
-export const serializeStateToUrl = (
+const serializeStateToUrl = (
   time: Time,
   bucket: TimeBucket,
   selectedStat: StatType,
@@ -28,6 +29,9 @@ export const serializeStateToUrl = (
     params.set("month", time.month);
   } else if (time.mode === "year") {
     params.set("year", time.year);
+  } else if (time.mode === "past-minutes") {
+    params.set("pastMinutesStart", time.pastMinutesStart.toString());
+    params.set("pastMinutesEnd", time.pastMinutesEnd.toString());
   }
 
   // Serialize bucket
@@ -45,7 +49,7 @@ export const serializeStateToUrl = (
 };
 
 // Deserialize URL parameters to store state
-export const deserializeUrlToState = (
+const deserializeUrlToState = (
   searchParams: URLSearchParams
 ): {
   time: Time | null;
@@ -63,7 +67,17 @@ export const deserializeUrlToState = (
   // Deserialize time
   const timeMode = searchParams.get("timeMode") as Time["mode"] | null;
   if (timeMode) {
-    if (timeMode === "day") {
+    if (timeMode === "past-minutes") {
+      const pastMinutesStart = searchParams.get("pastMinutesStart");
+      const pastMinutesEnd = searchParams.get("pastMinutesEnd");
+      if (pastMinutesStart && pastMinutesEnd) {
+        result.time = {
+          mode: "past-minutes",
+          pastMinutesStart: Number(pastMinutesStart),
+          pastMinutesEnd: Number(pastMinutesEnd),
+        };
+      }
+    } else if (timeMode === "day") {
       const day = searchParams.get("day");
       if (day) {
         result.time = { mode: "day", day };
@@ -172,7 +186,7 @@ export const useSyncStateWithUrl = () => {
     if (!pathname) return false;
     const pathParts = pathname.split("/");
     if (pathParts.length < 3) return false;
-    return ["main", "sessions", "users"].includes(pathParts[2]);
+    return ["main", "sessions", "users", "performance"].includes(pathParts[2]);
   };
 
   // Initialize from URL params after site is set

@@ -1,44 +1,71 @@
 "use client";
 
 import { useState } from "react";
-import { useGetGoals } from "../../../api/analytics/useGetGoals";
-import { getStartAndEndDate } from "../../../api/utils";
+import { useGetGoals } from "../../../api/analytics/goals/useGetGoals";
+import { DisabledOverlay } from "../../../components/DisabledOverlay";
 import { NothingFound } from "../../../components/NothingFound";
+import { Pagination } from "../../../components/pagination";
+import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { GOALS_PAGE_FILTERS, useStore } from "../../../lib/store";
 import { SubHeader } from "../components/SubHeader/SubHeader";
 import CreateGoalButton from "./components/CreateGoalButton";
 import GoalsList from "./components/GoalsList";
-import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 
 export default function GoalsPage() {
   useSetPageTitle("Rybbit · Goals");
 
-  const { time, site } = useStore();
-  const { startDate, endDate } = getStartAndEndDate(time);
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 9; // Show 9 cards (3x3 grid)
-
-  // Handle the case where startDate or endDate might be null (for 'all-time' mode)
-  const queryStartDate = startDate || "2020-01-01"; // Default fallback date
-  const queryEndDate = endDate || new Date().toISOString().split("T")[0]; // Today
-
-  // Fetch goals data with pagination
-  const { data: goalsData, isLoading } = useGetGoals({
-    startDate: queryStartDate,
-    endDate: queryEndDate,
-    page: currentPage,
-    pageSize,
+  const { site } = useStore();
+  const [pagination, setPagination] = useState({
+    pageIndex: 0, // TablePagination uses 0-based indexing
+    pageSize: 10, // Show 10 goals per page
   });
 
-  // Handle page change
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-    // Scroll to top of page when changing pages
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+  const { data: goalsData, isLoading } = useGetGoals({
+    page: pagination.pageIndex + 1, // API uses 1-based indexing
+    pageSize: pagination.pageSize,
+  });
+
+  // Create pagination controller for TablePagination
+  const paginationController = {
+    getState: () => ({ pagination }),
+    getCanPreviousPage: () => pagination.pageIndex > 0,
+    getCanNextPage: () => {
+      if (!goalsData?.meta) return false;
+      return pagination.pageIndex + 1 < goalsData.meta.totalPages;
+    },
+    getPageCount: () => goalsData?.meta?.totalPages || 1,
+    setPageIndex: (index: number) => {
+      setPagination((prev) => ({ ...prev, pageIndex: index }));
+      // Scroll to top of page when changing pages
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    },
+    previousPage: () => {
+      if (pagination.pageIndex > 0) {
+        setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex - 1 }));
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    nextPage: () => {
+      if (
+        goalsData?.meta &&
+        pagination.pageIndex + 1 < goalsData.meta.totalPages
+      ) {
+        setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
   };
+
+  // Transform data for TablePagination
+  const paginationData = goalsData
+    ? {
+        items: goalsData.data,
+        total: goalsData.meta.total,
+      }
+    : undefined;
 
   // Goal card skeleton component
   const GoalCardSkeleton = () => (
@@ -81,37 +108,47 @@ export default function GoalsPage() {
   );
 
   return (
-    <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
-      <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
-      <div className="flex items-center justify-between">
-        <div />
-        <CreateGoalButton siteId={Number(site)} />
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-3">
-          {Array(3)
-            .fill(0)
-            .map((_, index) => (
-              <GoalCardSkeleton key={`skeleton-${index}`} />
-            ))}
+    <DisabledOverlay message="Goals">
+      <div className="p-2 md:p-4 max-w-[1400px] mx-auto space-y-3">
+        <SubHeader availableFilters={GOALS_PAGE_FILTERS} />
+        <div className="flex items-center justify-between">
+          <div />
+          <CreateGoalButton siteId={Number(site)} />
         </div>
-      ) : !goalsData || goalsData.data.length === 0 ? (
-        <NothingFound
-          title={"No goals found"}
-          description={
-            "Create your first conversion goal to start tracking important user actions."
-          }
-          action={<CreateGoalButton siteId={Number(site)} />}
-        />
-      ) : (
-        <GoalsList
-          goals={goalsData.data}
-          siteId={Number(site)}
-          paginationMeta={goalsData.meta}
-          onPageChange={handlePageChange}
-        />
-      )}
-    </div>
+
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array(3)
+              .fill(0)
+              .map((_, index) => (
+                <GoalCardSkeleton key={`skeleton-${index}`} />
+              ))}
+          </div>
+        ) : !goalsData || goalsData.data.length === 0 ? (
+          <NothingFound
+            title={"No goals found"}
+            description={
+              "Create your first conversion goal to start tracking important user actions."
+            }
+            action={<CreateGoalButton siteId={Number(site)} />}
+          />
+        ) : (
+          <div className="space-y-6">
+            <GoalsList goals={goalsData.data} siteId={Number(site)} />
+
+            {goalsData.meta.totalPages > 1 && (
+              <Pagination
+                table={paginationController}
+                data={paginationData}
+                pagination={pagination}
+                setPagination={setPagination}
+                isLoading={isLoading}
+                itemName="goals"
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </DisabledOverlay>
   );
 }

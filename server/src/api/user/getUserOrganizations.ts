@@ -2,14 +2,14 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../../db/postgres/postgres.js";
 import { eq } from "drizzle-orm";
 import { member, organization } from "../../db/postgres/schema.js";
-import { getSession } from "../../lib/auth-utils.js";
+import { getSessionFromReq } from "../../lib/auth-utils.js";
 
 export const getUserOrganizations = async (
   request: FastifyRequest,
   reply: FastifyReply
 ) => {
   try {
-    const session = await getSession(request);
+    const session = await getSessionFromReq(request);
 
     if (!session?.user.id) {
       return reply.status(401).send({ error: "Unauthorized" });
